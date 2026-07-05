@@ -466,6 +466,38 @@ app.get('/api/admin/logs', requireSession, async (req, res) => {
   })));
 });
 
+app.get('/api/admin/keys/:id/logs', requireSession, async (req, res) => {
+  if (!USE_DB) return res.json([]);
+  await initDB();
+  const limit = Math.min(Number(req.query.limit) || 200, 1000);
+  const rows = await getSql()`
+    SELECT id, model, prompt_tokens, completion_tokens, cost, ts
+    FROM usage_logs
+    WHERE key_id = ${req.params.id}
+    ORDER BY ts DESC
+    LIMIT ${limit}`;
+  res.json(rows.map(r => ({
+    id: Number(r.id), model: r.model,
+    prompt_tokens: Number(r.prompt_tokens), completion_tokens: Number(r.completion_tokens),
+    cost: Number(r.cost), ts: Number(r.ts),
+  })));
+});
+
+app.get('/api/admin/keys/:id/model-stats', requireSession, async (req, res) => {
+  if (!USE_DB) return res.json([]);
+  await initDB();
+  const rows = await getSql()`
+    SELECT model,
+           COUNT(*)                               AS requests,
+           SUM(prompt_tokens + completion_tokens)  AS tokens,
+           SUM(cost)                              AS cost
+    FROM usage_logs
+    WHERE key_id = ${req.params.id}
+    GROUP BY model
+    ORDER BY cost DESC`;
+  res.json(rows.map(r => ({ model: r.model, requests: Number(r.requests), tokens: Number(r.tokens), cost: Number(r.cost) })));
+});
+
 // ── OpenAI-compatible API ──────────────────────────────────────────────────────
 app.get('/v1/models', (req, res) => res.json({ object: 'list', data: MODELS }));
 

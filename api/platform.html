@@ -181,6 +181,34 @@ td { padding:14px 16px; vertical-align:middle; }
 .copy-btn-lg:hover { color:var(--text); border-color:var(--bdr2); }
 .copy-btn-lg.ok { color:var(--green); border-color:rgba(16,185,129,.3); background:var(--green2); }
 
+/* ── Key Detail Drawer ── */
+.drawer-wrap { position:fixed; inset:0; z-index:300; display:flex; justify-content:flex-end; pointer-events:none; }
+.drawer-wrap.open { pointer-events:auto; }
+.drawer-back { position:absolute; inset:0; background:rgba(4,8,16,.7); opacity:0; transition:opacity .25s; backdrop-filter:blur(3px); }
+.drawer-wrap.open .drawer-back { opacity:1; }
+.drawer-panel { position:relative; width:720px; max-width:96vw; background:var(--surf); border-left:1px solid var(--bdr); height:100dvh; overflow-y:auto; transform:translateX(100%); transition:transform .28s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+.drawer-panel::-webkit-scrollbar { width:3px; }
+.drawer-panel::-webkit-scrollbar-thumb { background:var(--surf3); }
+.drawer-wrap.open .drawer-panel { transform:translateX(0); }
+.drawer-hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:26px 28px 20px; border-bottom:1px solid var(--bdr); flex-shrink:0; position:sticky; top:0; background:var(--surf); z-index:1; gap:16px; }
+.drawer-body { padding:24px 28px; flex:1; display:flex; flex-direction:column; gap:28px; }
+.drawer-key-meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px; }
+.drawer-meta-chip { background:var(--surf2); border:1px solid var(--bdr); border-radius:6px; font-size:11px; padding:3px 9px; color:var(--muted); }
+.drawer-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+@media(max-width:600px){ .drawer-stats{ grid-template-columns:repeat(2,1fr); } }
+.d-stat { background:var(--surf2); border:1px solid var(--bdr); border-radius:9px; padding:14px 16px; }
+.d-stat-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted2); margin-bottom:6px; }
+.d-stat-val { font-size:18px; font-weight:800; letter-spacing:-.02em; }
+.drawer-section-ttl { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted2); margin-bottom:10px; }
+.model-breakdown { display:flex; flex-direction:column; gap:6px; }
+.mb-row { display:grid; grid-template-columns:1fr auto auto auto; align-items:center; gap:12px; background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; padding:10px 14px; }
+.mb-model { font-family:'SF Mono',Consolas,monospace; font-size:12px; color:var(--blue); }
+.mb-val { font-size:12px; font-variant-numeric:tabular-nums; color:var(--muted); white-space:nowrap; }
+.mb-cost { font-size:13px; font-weight:700; color:var(--accent); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.drawer-log-table { font-size:12px; }
+.drawer-log-table th { font-size:10px; }
+.drawer-log-table td,
+.drawer-log-table th { padding:7px 10px; }
 /* ── Toast ── */
 .toast-wrap { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
 .toast { display:flex; align-items:center; gap:10px; background:var(--surf); border:1px solid var(--bdr2); border-radius:10px; padding:11px 16px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.4); transform:translateX(120%); transition:transform .25s cubic-bezier(.34,1.56,.64,1); pointer-events:all; max-width:320px; }
@@ -446,6 +474,59 @@ td { padding:14px 16px; vertical-align:middle; }
 
 </main>
 
+<!-- ─── Key Detail Drawer ────────────────────────────────────────────────── -->
+<div class="drawer-wrap" id="keyDrawer">
+  <div class="drawer-back" onclick="closeDrawer()"></div>
+  <div class="drawer-panel">
+    <div class="drawer-hdr">
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div id="drawerName" style="font-size:19px;font-weight:800;letter-spacing:-.02em"></div>
+          <span id="drawerBadge" class="key-status-badge"></span>
+        </div>
+        <div class="drawer-key-meta">
+          <code id="drawerKey" style="font-family:'SF Mono',Consolas,monospace;font-size:12px;color:var(--muted);background:var(--surf2);border:1px solid var(--bdr);padding:3px 9px;border-radius:6px"></code>
+          <button class="copy-mini" id="drawerCopyBtn" title="Copy key" style="flex-shrink:0" onclick="copyDrawerKey()">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+          <span id="drawerCreated" class="drawer-meta-chip"></span>
+          <span id="drawerLimits" class="drawer-meta-chip"></span>
+        </div>
+      </div>
+      <button class="modal-x" onclick="closeDrawer()" style="flex-shrink:0">✕</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Stats -->
+      <div>
+        <div class="drawer-section-ttl">Usage Summary</div>
+        <div class="drawer-stats">
+          <div class="d-stat"><div class="d-stat-lbl">Total Requests</div><div class="d-stat-val" id="dReqTotal">—</div></div>
+          <div class="d-stat"><div class="d-stat-lbl">Total Tokens</div><div class="d-stat-val" id="dTokTotal">—</div></div>
+          <div class="d-stat"><div class="d-stat-lbl">All-Time Cost</div><div class="d-stat-val" style="color:var(--accent)" id="dCostTotal">—</div></div>
+          <div class="d-stat"><div class="d-stat-lbl">Today's Cost</div><div class="d-stat-val" id="dCostToday">—</div></div>
+        </div>
+      </div>
+      <!-- Model breakdown -->
+      <div>
+        <div class="drawer-section-ttl">Cost by Model</div>
+        <div class="model-breakdown" id="drawerModels">
+          <div style="color:var(--muted);font-size:13px">Loading…</div>
+        </div>
+      </div>
+      <!-- Request log -->
+      <div>
+        <div class="drawer-section-ttl">Request History <span id="drawerLogCount" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0"></span></div>
+        <div class="tbl-wrap">
+          <table class="drawer-log-table">
+            <thead><tr><th>Time</th><th>Model</th><th>Prompt</th><th>Completion</th><th>Total Tokens</th><th>Cost</th></tr></thead>
+            <tbody id="drawerLogs"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Create Key Modal ──────────────────────────────────────────────────── -->
 <div class="overlay" id="createModal">
   <div class="modal">
@@ -675,6 +756,7 @@ function bar(used, limit) {
 
 // ── Render keys ───────────────────────────────────────────────────────────────
 function renderKeys(keys) {
+  window._keys = keys;
   var tb = document.getElementById('keysBody');
   if (!keys.length) {
     tb.innerHTML = '<tr><td colspan="9" class="empty-row">No API keys yet<div class="empty-hint">Click "Create Key" to generate your first key</div></td></tr>';
@@ -685,7 +767,7 @@ function renderKeys(keys) {
     var d = k.status === 'deleted';
     var b = bar(k.usage.requests_today, k.limits.requests_per_day);
     var statusLabel = a ? 'Active' : (d ? 'Deleted' : 'Revoked');
-    return '<tr>'
+    return '<tr onclick="openKeyDetail(\''+k.id+'\')" style="cursor:pointer" title="Click to view detail">'
       +'<td><div class="name-cell">'
         +'<span class="status-dot '+k.status+'"></span>'
         +'<div>'
@@ -695,7 +777,7 @@ function renderKeys(keys) {
       +'</div></td>'
       +'<td><div class="key-code-cell">'
         +'<code class="key-code">'+esc(maskKey(k.key))+'</code>'
-        +'<button class="copy-mini" onclick="copyKey(\''+esc(k.key)+'\',this)" title="Copy key">'
+        +'<button class="copy-mini" onclick="event.stopPropagation();copyKey(\''+esc(k.key)+'\',this)" title="Copy key">'
           +'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
         +'</button>'
       +'</div></td>'
@@ -709,11 +791,11 @@ function renderKeys(keys) {
           +'<div class="cost-sub">'+fmtCost(k.usage.cost_total)+' total</div></td>'
       +'<td><span class="lim-cell">'+esc(limitStr(k.limits))+'</span></td>'
       +'<td><div class="row-actions">'
-        +(a?'<button class="act act-edit" onclick="openEdit(\''+k.id+'\')">Edit</button>':'')
-        +(a?'<button class="act act-revoke" onclick="revokeKey(\''+k.id+'\',\''+esc(k.name)+'\')">Revoke</button>'
+        +(a?'<button class="act act-edit" onclick="event.stopPropagation();openEdit(\''+k.id+'\')">Edit</button>':'')
+        +(a?'<button class="act act-revoke" onclick="event.stopPropagation();revokeKey(\''+k.id+'\',\''+esc(k.name)+'\')">Revoke</button>'
             :(d?''
-                :'<button class="act act-restore" onclick="restoreKey(\''+k.id+'\')">Restore</button>'))
-        +(!d?'<button class="act act-delete" onclick="deleteKey(\''+k.id+'\',\''+esc(k.name)+'\')">Delete</button>':'')
+                :'<button class="act act-restore" onclick="event.stopPropagation();restoreKey(\''+k.id+'\')">Restore</button>'))
+        +(!d?'<button class="act act-delete" onclick="event.stopPropagation();deleteKey(\''+k.id+'\',\''+esc(k.name)+'\')">Delete</button>':'')
       +'</div></td>'
     +'</tr>';
   }).join('');
@@ -810,6 +892,88 @@ function showView(v, btn) {
   if (v === 'pricing') reloadPricing();
   if (v === 'logs')    reloadLogs();
 }
+
+// ── Key Detail Drawer ─────────────────────────────────────────────────────────
+var _drawerFullKey = '';
+async function openKeyDetail(id) {
+  var k = (window._keys || []).find(function(x){ return x.id === id; });
+  if (!k) return;
+  _drawerFullKey = k.key;
+  var statusLabel = k.status === 'active' ? 'Active' : (k.status === 'deleted' ? 'Deleted' : 'Revoked');
+  document.getElementById('drawerName').textContent  = k.name;
+  document.getElementById('drawerBadge').textContent = statusLabel;
+  document.getElementById('drawerBadge').className   = 'key-status-badge ' + k.status;
+  document.getElementById('drawerKey').textContent   = maskKey(k.key);
+  document.getElementById('drawerCreated').textContent = 'Created ' + fmtDate(k.created_at);
+  document.getElementById('drawerLimits').textContent  = limitStr(k.limits) === 'No limits' ? 'No limits' : limitStr(k.limits);
+  document.getElementById('dReqTotal').textContent   = fmt(k.usage.requests_total);
+  document.getElementById('dTokTotal').textContent   = fmt(k.usage.tokens_total);
+  document.getElementById('dCostTotal').textContent  = fmtCost(k.usage.cost_total);
+  document.getElementById('dCostToday').textContent  = fmtCost(k.usage.cost_today);
+  document.getElementById('drawerModels').innerHTML  = '<div style="color:var(--muted);font-size:13px">Loading…</div>';
+  document.getElementById('drawerLogs').innerHTML    = '<tr><td colspan="6" class="empty-row">Loading…</td></tr>';
+  document.getElementById('drawerLogCount').textContent = '';
+  document.getElementById('keyDrawer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // fetch model stats + logs in parallel
+  try {
+    var [msRes, logsRes] = await Promise.all([
+      fetch('/api/admin/keys/'+id+'/model-stats'),
+      fetch('/api/admin/keys/'+id+'/logs?limit=200'),
+    ]);
+    var ms   = await msRes.json();
+    var logs = await logsRes.json();
+    // Model breakdown
+    if (!ms.length) {
+      document.getElementById('drawerModels').innerHTML = '<div style="color:var(--muted);font-size:13px">No requests yet</div>';
+    } else {
+      var totalCost = ms.reduce(function(a,m){ return a+m.cost; }, 0);
+      document.getElementById('drawerModels').innerHTML = ms.map(function(m) {
+        var pct = totalCost > 0 ? (m.cost/totalCost*100).toFixed(1) : 0;
+        var prov = m.model.split('/')[0];
+        var color = PROVIDER_COLORS[prov] || '#e0e8f0';
+        return '<div class="mb-row">'
+          +'<div><div class="mb-model">'+esc(m.model)+'</div>'
+            +'<div style="height:3px;background:var(--surf3);border-radius:2px;margin-top:5px;max-width:160px">'
+              +'<div style="height:3px;border-radius:2px;background:'+color+';width:'+pct+'%"></div>'
+            +'</div></div>'
+          +'<div class="mb-val">'+fmt(m.requests)+' req</div>'
+          +'<div class="mb-val">'+fmt(m.tokens)+' tok</div>'
+          +'<div class="mb-cost">'+fmtCost(m.cost)+'</div>'
+        +'</div>';
+      }).join('');
+    }
+    // Request log
+    document.getElementById('drawerLogCount').textContent = logs.length ? '('+logs.length+' shown)' : '';
+    if (!logs.length) {
+      document.getElementById('drawerLogs').innerHTML = '<tr><td colspan="6" class="empty-row">No requests yet</td></tr>';
+    } else {
+      document.getElementById('drawerLogs').innerHTML = logs.map(function(l) {
+        var t = new Date(l.ts);
+        var ts = t.toLocaleDateString()+' '+t.toLocaleTimeString();
+        var tot = l.prompt_tokens + l.completion_tokens;
+        return '<tr>'
+          +'<td style="color:var(--muted);white-space:nowrap">'+ts+'</td>'
+          +'<td><code style="font-size:11px;color:var(--blue)">'+esc(l.model)+'</code></td>'
+          +'<td style="font-variant-numeric:tabular-nums;color:var(--muted)">'+fmt(l.prompt_tokens)+'</td>'
+          +'<td style="font-variant-numeric:tabular-nums;color:var(--muted)">'+fmt(l.completion_tokens)+'</td>'
+          +'<td style="font-variant-numeric:tabular-nums">'+fmt(tot)+'</td>'
+          +'<td style="font-variant-numeric:tabular-nums;color:var(--accent)">'+fmtCost(l.cost)+'</td>'
+        +'</tr>';
+      }).join('');
+    }
+  } catch(e) {
+    document.getElementById('drawerModels').innerHTML = '<div style="color:var(--red);font-size:13px">Failed to load</div>';
+  }
+}
+function closeDrawer() {
+  document.getElementById('keyDrawer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function copyDrawerKey() {
+  navigator.clipboard.writeText(_drawerFullKey).then(function(){ toast('Key copied','ok'); });
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDrawer(); });
 
 // ── Create ────────────────────────────────────────────────────────────────────
 function openCreate() {
