@@ -1,0 +1,17 @@
+{
+  "name": "meshapi-platform",
+  "version": "1.0.0",
+  "description": "OpenAI-compatible API key management platform powered by MeshAPI",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "node api/index.js"
+  },
+  "dependencies": {
+    "@vercel/kv": "^3.0.0",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

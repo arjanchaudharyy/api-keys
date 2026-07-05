@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MeshAPI — Documentation</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:     #07101c;
+  --surf:   #0d1b2a;
+  --surf2:  #13253a;
+  --surf3:  #1a3050;
+  --bdr:    #1e3350;
+  --bdr2:   #2a4060;
+  --text:   #dce8f8;
+  --muted:  #5a7499;
+  --muted2: #3d5a7a;
+  --accent: #f97316;
+  --green:  #10b981;
+  --blue:   #3b82f6;
+  --red:    #f43f5e;
+  --yellow: #f59e0b;
+}
+html { height:100%; scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',system-ui,sans-serif; font-size:14px; line-height:1.7; min-height:100%; }
+
+/* ── Layout ── */
+.layout { display:flex; min-height:100vh; }
+.sidebar { width:248px; flex-shrink:0; background:var(--surf); border-right:1px solid var(--bdr); position:sticky; top:0; height:100vh; overflow-y:auto; display:flex; flex-direction:column; }
+.sidebar::-webkit-scrollbar { width:4px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--surf3); border-radius:2px; }
+.content { flex:1; min-width:0; max-width:900px; padding:40px 48px 80px; }
+@media(max-width:900px){ .sidebar{display:none;} .content{padding:28px 24px 60px;} }
+
+/* ── Sidebar ── */
+.s-top { padding:20px 16px 14px; border-bottom:1px solid var(--bdr); }
+.s-logo { display:flex; align-items:center; gap:10px; }
+.s-logo-mark { width:30px; height:30px; background:linear-gradient(135deg,#f97316,#ea580c); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13px; color:#fff; }
+.s-logo-name { font-size:16px; font-weight:800; letter-spacing:-.03em; }
+.s-logo-name b { color:var(--accent); }
+.s-back { display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; color:var(--muted); text-decoration:none; }
+.s-back:hover { color:var(--text); }
+
+.s-nav { padding:14px 10px 20px; flex:1; }
+.s-group { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted2); padding:12px 8px 4px; }
+.s-item { display:block; padding:6px 10px; border-radius:7px; color:var(--muted); font-size:13px; text-decoration:none; transition:all .12s; }
+.s-item:hover { background:var(--surf2); color:var(--text); }
+.s-item.active { background:rgba(249,115,22,.1); color:var(--accent); font-weight:600; }
+
+/* ── Content ── */
+.page-hero { margin-bottom:44px; border-bottom:1px solid var(--bdr); padding-bottom:32px; }
+.page-hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(249,115,22,.1); border:1px solid rgba(249,115,22,.2); border-radius:20px; padding:4px 12px; font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.07em; margin-bottom:14px; }
+.page-hero h1 { font-size:36px; font-weight:900; letter-spacing:-.04em; line-height:1.1; margin-bottom:12px; }
+.page-hero p { font-size:16px; color:var(--muted); max-width:560px; line-height:1.7; }
+
+h2 { font-size:22px; font-weight:800; letter-spacing:-.02em; margin-bottom:12px; margin-top:48px; padding-top:4px; }
+h3 { font-size:16px; font-weight:700; letter-spacing:-.01em; margin-bottom:8px; margin-top:28px; color:var(--text); }
+p { color:#a8bcd4; margin-bottom:14px; line-height:1.75; }
+a { color:var(--blue); text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+/* ── Code ── */
+code { font-family:'SF Mono',Consolas,monospace; font-size:12.5px; background:var(--surf2); border:1px solid var(--bdr); border-radius:4px; padding:1px 5px; color:#86efac; }
+pre { background:var(--surf); border:1px solid var(--bdr); border-radius:10px; overflow-x:auto; margin:14px 0 22px; }
+pre code { background:none; border:none; border-radius:0; padding:18px 20px; display:block; font-size:13px; line-height:1.7; color:#b3cfe8; white-space:pre; }
+pre code .k  { color:#7dd3fc; }
+pre code .s  { color:#86efac; }
+pre code .c  { color:var(--muted); font-style:italic; }
+pre code .n  { color:#fca5a5; }
+pre code .m  { color:#fde68a; }
+pre code .p  { color:var(--text); }
+
+/* ── Callouts ── */
+.callout { border-radius:9px; padding:14px 16px; margin:18px 0; display:flex; gap:12px; align-items:flex-start; font-size:13.5px; line-height:1.65; }
+.callout svg { width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+.callout.info  { background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.2); color:#bae0ff; }
+.callout.info svg { color:var(--blue); }
+.callout.warn  { background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.2); color:#fde68a; }
+.callout.warn svg { color:var(--yellow); }
+.callout.good  { background:rgba(16,185,129,.07); border:1px solid rgba(16,185,129,.2); color:#a7f3d0; }
+.callout.good svg { color:var(--green); }
+
+/* ── Tables ── */
+.tbl-wrap { overflow-x:auto; margin:14px 0 24px; border-radius:10px; border:1px solid var(--bdr); }
+table { width:100%; border-collapse:collapse; min-width:520px; }
+thead th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); padding:11px 14px; text-align:left; border-bottom:1px solid var(--bdr); background:var(--surf2); white-space:nowrap; }
+tbody td { padding:12px 14px; border-bottom:1px solid rgba(30,51,80,.5); color:#a8bcd4; font-size:13.5px; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover td { background:rgba(255,255,255,.015); }
+.pill { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; text-transform:uppercase; letter-spacing:.06em; }
+.pill.get    { background:rgba(16,185,129,.12); color:var(--green); }
+.pill.post   { background:rgba(249,115,22,.12); color:var(--accent); }
+.pill.free   { background:rgba(59,130,246,.12); color:var(--blue); }
+.pill.auth   { background:rgba(245,158,11,.1); color:var(--yellow); }
+.pill.ok     { background:rgba(16,185,129,.1); color:var(--green); }
+.pill.conf   { background:rgba(139,92,246,.1); color:#a78bfa; }
+
+/* ── Model table ── */
+.model-row td:first-child { font-family:'SF Mono',Consolas,monospace; font-size:12px; color:var(--blue); }
+.provider-tag { font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; text-transform:uppercase; letter-spacing:.05em; }
+.prov-anthropic { background:rgba(251,146,60,.1); color:#fb923c; }
+.prov-openai    { background:rgba(96,165,250,.1);  color:#60a5fa; }
+.prov-google    { background:rgba(134,239,172,.1); color:#86efac; }
+
+/* ── Live check widget ── */
+.usage-widget { background:var(--surf); border:1px solid var(--bdr2); border-radius:12px; padding:22px 24px; margin:24px 0; }
+.usage-widget h4 { font-size:14px; font-weight:700; margin-bottom:14px; }
+.usage-row { display:flex; gap:10px; }
+.usage-row input { flex:1; background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; color:var(--text); font-family:'SF Mono',Consolas,monospace; font-size:13px; padding:10px 14px; outline:none; }
+.usage-row input:focus { border-color:var(--blue); }
+.usage-row button { background:var(--accent); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; font-family:inherit; padding:10px 18px; cursor:pointer; white-space:nowrap; }
+.usage-row button:hover { background:#ea6a0a; }
+#usageResult { margin-top:14px; font-size:13px; }
+.usage-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-top:10px; }
+.usage-stat { background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; padding:12px 14px; }
+.usage-stat .lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:4px; }
+.usage-stat .val { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; }
+.usage-stat .val.green { color:var(--green); }
+
+section { scroll-margin-top:24px; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="s-top">
+    <div class="s-logo">
+      <div class="s-logo-mark">M</div>
+      <div class="s-logo-name">Mesh<b>API</b></div>
+    </div>
+    <a class="s-back" href="/">← Back to Dashboard</a>
+  </div>
+  <nav class="s-nav">
+    <div class="s-group">Getting Started</div>
+    <a class="s-item active" href="#intro">Introduction</a>
+    <a class="s-item" href="#auth">Authentication</a>
+    <a class="s-item" href="#quickstart">Quick Start</a>
+    <div class="s-group">Endpoints</div>
+    <a class="s-item" href="#ep-models">GET /v1/models</a>
+    <a class="s-item" href="#ep-chat">POST /v1/chat/completions</a>
+    <a class="s-item" href="#ep-usage">GET /v1/usage</a>
+    <div class="s-group">Models</div>
+    <a class="s-item" href="#models-anthropic">Anthropic</a>
+    <a class="s-item" href="#models-openai">OpenAI</a>
+    <a class="s-item" href="#models-google">Google</a>
+    <div class="s-group">Integrations</div>
+    <a class="s-item" href="#int-python">Python</a>
+    <a class="s-item" href="#int-curl">cURL</a>
+    <a class="s-item" href="#int-opencode">OpenCode</a>
+    <a class="s-item" href="#int-cursor">Cursor / Continue</a>
+    <a class="s-item" href="#int-aider">Aider</a>
+    <div class="s-group">Reference</div>
+    <a class="s-item" href="#errors">Errors</a>
+    <a class="s-item" href="#limits">Rate Limits</a>
+    <a class="s-item" href="#usage-check">Check Usage</a>
+  </nav>
+</aside>
+
+<!-- ── Content ──────────────────────────────────────────────────────────── -->
+<div class="content">
+
+  <div class="page-hero">
+    <div class="page-hero-badge">
+      <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+      Free LLM Access
+    </div>
+    <h1>MeshAPI Documentation</h1>
+    <p>OpenAI-compatible API endpoint providing free access to 25+ models including Claude, GPT-4o, and Gemini. Drop-in replacement for any OpenAI SDK or tool.</p>
+  </div>
+
+  <!-- ── Introduction ── -->
+  <section id="intro">
+    <h2>Introduction</h2>
+    <p>MeshAPI is an OpenAI-compatible proxy that routes requests to multiple LLM providers. It uses the standard <code>POST /v1/chat/completions</code> format, so any tool or library that supports OpenAI works with zero changes.</p>
+
+    <div class="callout info">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
+      <span>All requests are proxied through the MeshAPI demo endpoint. You are not billed by model providers directly. Usage is subject to availability of the upstream demo service.</span>
+    </div>
+
+    <h3>Base URL</h3>
+    <pre><code id="baseUrlCode">https://your-deployment.vercel.app/v1</code></pre>
+    <p>Or for local development: <code>http://localhost:4321/v1</code></p>
+  </section>
+
+  <!-- ── Authentication ── -->
+  <section id="auth">
+    <h2>Authentication</h2>
+    <p>All API requests require a valid API key passed in the <code>Authorization</code> header as a Bearer token:</p>
+    <pre><code>Authorization: Bearer sk-mesh-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre>
+    <p>API keys are managed through the <a href="/">admin dashboard</a>. Keys have the format <code>sk-mesh-</code> followed by 40 hex characters.</p>
+
+    <h3>Admin Dashboard</h3>
+    <p>Navigate to <code>/login</code> to access the admin dashboard where you can create keys, set per-key limits, monitor usage, and revoke access.</p>
+  </section>
+
+  <!-- ── Quick Start ── -->
+  <section id="quickstart">
+    <h2>Quick Start</h2>
+    <pre><code><span class="k">curl</span> <span class="n">-X</span> POST <span class="s">"http://localhost:4321/v1/chat/completions"</span> \
+  <span class="n">-H</span> <span class="s">"Authorization: Bearer sk-mesh-your-key"</span> \
+  <span class="n">-H</span> <span class="s">"Content-Type: application/json"</span> \
+  <span class="n">-d</span> <span class="s">'{
+    "model": "anthropic/claude-sonnet-5",
+    "messages": [{"role": "user", "content": "Say hello!"}],
+    "max_tokens": 100
+  }'</span></code></pre>
+
+    <div class="callout good">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+      <span>100% compatible with the OpenAI Python SDK, Node.js SDK, and any tool that supports custom base URLs. Just change the base URL and API key — no other code changes needed.</span>
+    </div>
+  </section>
+
+  <!-- ── Endpoints ── -->
+  <section id="ep-models">
+    <h2>GET /v1/models</h2>
+    <p>Returns all available models in OpenAI format.</p>
+    <pre><code><span class="k">GET</span> /v1/models
+Authorization: Bearer sk-mesh-...</code></pre>
+
+    <h3>Response</h3>
+    <pre><code>{
+  <span class="s">"object"</span>: <span class="s">"list"</span>,
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"anthropic/claude-sonnet-5"</span>,
+      <span class="s">"object"</span>: <span class="s">"model"</span>,
+      <span class="s">"created"</span>: <span class="m">1700000000</span>,
+      <span class="s">"owned_by"</span>: <span class="s">"anthropic"</span>
+    },
+    <span class="c">// ... more models</span>
+  ]
+}</code></pre>
+  </section>
+
+  <section id="ep-chat">
+    <h2>POST /v1/chat/completions</h2>
+    <p>The main chat endpoint. Fully compatible with the OpenAI Chat Completions API format.</p>
+
+    <h3>Request Body</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>model</code></td><td>string</td><td><span class="pill auth">Required</span></td><td>Model ID from the /v1/models list</td></tr>
+          <tr><td><code>messages</code></td><td>array</td><td><span class="pill auth">Required</span></td><td>Array of <code>{role, content}</code> objects (system/user/assistant)</td></tr>
+          <tr><td><code>max_tokens</code></td><td>integer</td><td><span class="pill conf">Optional</span></td><td>Maximum tokens to generate (default: 2048)</td></tr>
+          <tr><td><code>temperature</code></td><td>number</td><td><span class="pill conf">Optional</span></td><td>Sampling temperature 0–2 (default: 1.0)</td></tr>
+          <tr><td><code>stream</code></td><td>boolean</td><td><span class="pill conf">Optional</span></td><td>Stream response via SSE (default: false)</td></tr>
+          <tr><td><code>top_p</code></td><td>number</td><td><span class="pill conf">Optional</span></td><td>Nucleus sampling parameter</td></tr>
+          <tr><td><code>stop</code></td><td>string/array</td><td><span class="pill conf">Optional</span></td><td>Stop sequences</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Non-streaming Response</h3>
+    <pre><code>{
+  <span class="s">"id"</span>: <span class="s">"chatcmpl-abc123"</span>,
+  <span class="s">"object"</span>: <span class="s">"chat.completion"</span>,
+  <span class="s">"created"</span>: <span class="m">1700000000</span>,
+  <span class="s">"model"</span>: <span class="s">"anthropic/claude-sonnet-5"</span>,
+  <span class="s">"choices"</span>: [{
+    <span class="s">"index"</span>: <span class="m">0</span>,
+    <span class="s">"message"</span>: { <span class="s">"role"</span>: <span class="s">"assistant"</span>, <span class="s">"content"</span>: <span class="s">"Hello! How can I help you today?"</span> },
+    <span class="s">"finish_reason"</span>: <span class="s">"stop"</span>
+  }],
+  <span class="s">"usage"</span>: {
+    <span class="s">"prompt_tokens"</span>: <span class="m">12</span>,
+    <span class="s">"completion_tokens"</span>: <span class="m">9</span>,
+    <span class="s">"total_tokens"</span>: <span class="m">21</span>
+  }
+}</code></pre>
+
+    <h3>Streaming Example</h3>
+    <pre><code><span class="k">curl</span> <span class="n">-X</span> POST <span class="s">"http://localhost:4321/v1/chat/completions"</span> \
+  <span class="n">-H</span> <span class="s">"Authorization: Bearer sk-mesh-your-key"</span> \
+  <span class="n">-H</span> <span class="s">"Content-Type: application/json"</span> \
+  <span class="n">--no-buffer</span> \
+  <span class="n">-d</span> <span class="s">'{
+    "model": "openai/gpt-4o",
+    "messages": [{"role": "user", "content": "Write a haiku"}],
+    "stream": true
+  }'</span></code></pre>
+  </section>
+
+  <section id="ep-usage">
+    <h2>GET /v1/usage</h2>
+    <p>Returns usage statistics for the authenticated key.</p>
+    <pre><code><span class="k">GET</span> /v1/usage
+Authorization: Bearer sk-mesh-...</code></pre>
+
+    <h3>Response</h3>
+    <pre><code>{
+  <span class="s">"key_name"</span>: <span class="s">"My App"</span>,
+  <span class="s">"status"</span>: <span class="s">"active"</span>,
+  <span class="s">"usage"</span>: {
+    <span class="s">"requests_today"</span>: <span class="m">42</span>,
+    <span class="s">"tokens_today"</span>: <span class="m">18340</span>,
+    <span class="s">"requests_total"</span>: <span class="m">1203</span>,
+    <span class="s">"tokens_total"</span>: <span class="m">492110</span>,
+    <span class="s">"cost_today"</span>: <span class="m">0.0412</span>,
+    <span class="s">"cost_total"</span>: <span class="m">1.847</span>
+  },
+  <span class="s">"limits"</span>: {
+    <span class="s">"requests_per_day"</span>: <span class="k">null</span>,
+    <span class="s">"tokens_per_day"</span>: <span class="m">1000000</span>,
+    <span class="s">"tokens_total"</span>: <span class="k">null</span>
+  }
+}</code></pre>
+  </section>
+
+  <!-- ── Models ── -->
+  <section id="models-anthropic">
+    <h2>Anthropic Models</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Model ID</th><th>Name</th><th>Notes</th></tr></thead>
+        <tbody class="model-row">
+          <tr><td>anthropic/claude-fable-5</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Fable 5 — most capable</td></tr>
+          <tr><td>anthropic/claude-sonnet-5</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Sonnet 5 — balanced</td></tr>
+          <tr><td>anthropic/claude-opus-4.8</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Opus 4.8</td></tr>
+          <tr><td>anthropic/claude-opus-4.8-fast</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Opus 4.8 Fast</td></tr>
+          <tr><td>anthropic/claude-opus-4.7</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Opus 4.7</td></tr>
+          <tr><td>anthropic/claude-opus-4.7-fast</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Opus 4.7 Fast</td></tr>
+          <tr><td>anthropic/claude-opus-4.6</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Opus 4.6</td></tr>
+          <tr><td>anthropic/claude-opus-4.5</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Opus 4.5</td></tr>
+          <tr><td>anthropic/claude-haiku-4.5</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude Haiku 4.5 — fast &amp; cheap</td></tr>
+          <tr><td>anthropic/claude-3-haiku</td><td><span class="provider-tag prov-anthropic">Anthropic</span></td><td>Claude 3 Haiku — fastest</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="models-openai">
+    <h2>OpenAI Models</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Model ID</th><th>Provider</th><th>Notes</th></tr></thead>
+        <tbody class="model-row">
+          <tr><td>openai/gpt-4o</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-4o multimodal</td></tr>
+          <tr><td>openai/gpt-4.1</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-4.1</td></tr>
+          <tr><td>openai/gpt-4.1-mini</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-4.1 Mini</td></tr>
+          <tr><td>openai/gpt-4.1-nano</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-4.1 Nano — fastest</td></tr>
+          <tr><td>openai/gpt-4o-mini</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-4o Mini</td></tr>
+          <tr><td>openai/gpt-4o-search-preview</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-4o with web search</td></tr>
+          <tr><td>openai/o4-mini</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>o4 Mini reasoning model</td></tr>
+          <tr><td>openai/gpt-3.5-turbo</td><td><span class="provider-tag prov-openai">OpenAI</span></td><td>GPT-3.5 Turbo — very fast</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="models-google">
+    <h2>Google Models</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Model ID</th><th>Provider</th><th>Notes</th></tr></thead>
+        <tbody class="model-row">
+          <tr><td>google/gemini-3.1-pro</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 3.1 Pro</td></tr>
+          <tr><td>google/gemini-3.1-pro-preview</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 3.1 Pro Preview</td></tr>
+          <tr><td>google/gemini-3.5-flash</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 3.5 Flash</td></tr>
+          <tr><td>google/gemini-2.5-pro</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 2.5 Pro</td></tr>
+          <tr><td>google/gemini-2.5-pro-preview</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 2.5 Pro Preview</td></tr>
+          <tr><td>google/gemini-2.5-flash</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 2.5 Flash</td></tr>
+          <tr><td>google/gemini-2.5-flash-lite</td><td><span class="provider-tag prov-google">Google</span></td><td>Gemini 2.5 Flash Lite</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Integrations ── -->
+  <section id="int-python">
+    <h2>Python</h2>
+    <p>Use the official <code>openai</code> Python SDK with a custom <code>base_url</code>:</p>
+    <pre><code><span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+client = OpenAI(
+    api_key=<span class="s">"sk-mesh-your-key-here"</span>,
+    base_url=<span class="s">"http://localhost:4321/v1"</span>
+)
+
+response = client.chat.completions.create(
+    model=<span class="s">"anthropic/claude-sonnet-5"</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"Hello!"</span>}],
+    max_tokens=<span class="m">512</span>
+)
+
+<span class="k">print</span>(response.choices[<span class="m">0</span>].message.content)</code></pre>
+
+    <h3>Async / Streaming</h3>
+    <pre><code><span class="k">async with</span> client.chat.completions.stream(
+    model=<span class="s">"openai/gpt-4o"</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"Tell me a story"</span>}]
+) <span class="k">as</span> stream:
+    <span class="k">async for</span> chunk <span class="k">in</span> stream:
+        <span class="k">print</span>(chunk.choices[<span class="m">0</span>].delta.content <span class="k">or</span> <span class="s">""</span>, end=<span class="s">""</span>)</code></pre>
+  </section>
+
+  <section id="int-curl">
+    <h2>cURL</h2>
+    <pre><code><span class="k">curl</span> <span class="n">-X</span> POST http://localhost:4321/v1/chat/completions \
+  <span class="n">-H</span> <span class="s">"Authorization: Bearer sk-mesh-your-key"</span> \
+  <span class="n">-H</span> <span class="s">"Content-Type: application/json"</span> \
+  <span class="n">-d</span> <span class="s">'{
+    "model": "google/gemini-2.5-pro",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user",   "content": "What is 2+2?"}
+    ],
+    "max_tokens": 50
+  }'</span></code></pre>
+  </section>
+
+  <section id="int-opencode">
+    <h2>OpenCode</h2>
+    <p>Add this to your OpenCode config (<code>~/.config/opencode/config.json</code>):</p>
+    <pre><code>{
+  <span class="s">"providers"</span>: {
+    <span class="s">"meshapi"</span>: {
+      <span class="s">"type"</span>: <span class="s">"openai"</span>,
+      <span class="s">"apiKey"</span>: <span class="s">"sk-mesh-your-key-here"</span>,
+      <span class="s">"baseURL"</span>: <span class="s">"http://localhost:4321/v1"</span>,
+      <span class="s">"models"</span>: {
+        <span class="s">"anthropic/claude-sonnet-5"</span>: { <span class="s">"name"</span>: <span class="s">"Claude Sonnet 5 (Free)"</span> },
+        <span class="s">"openai/gpt-4o"</span>: { <span class="s">"name"</span>: <span class="s">"GPT-4o (Free)"</span> }
+      }
+    }
+  }
+}</code></pre>
+  </section>
+
+  <section id="int-cursor">
+    <h2>Cursor / Continue.dev</h2>
+    <p><strong>Cursor:</strong> Go to <em>Settings → Models → Add Model</em>. Set the model name to your preferred model ID, and under <em>OpenAI API Key</em> enter your API key. Then toggle <em>Override OpenAI Base URL</em> and enter <code>http://localhost:4321/v1</code>.</p>
+    <p><strong>Continue.dev:</strong> Add to <code>~/.continue/config.json</code>:</p>
+    <pre><code>{
+  <span class="s">"models"</span>: [{
+    <span class="s">"provider"</span>: <span class="s">"openai"</span>,
+    <span class="s">"model"</span>: <span class="s">"anthropic/claude-sonnet-5"</span>,
+    <span class="s">"title"</span>: <span class="s">"Claude (Free via MeshAPI)"</span>,
+    <span class="s">"apiKey"</span>: <span class="s">"sk-mesh-your-key-here"</span>,
+    <span class="s">"apiBase"</span>: <span class="s">"http://localhost:4321/v1"</span>
+  }]
+}</code></pre>
+  </section>
+
+  <section id="int-aider">
+    <h2>Aider</h2>
+    <pre><code><span class="k">export</span> OPENAI_API_KEY=<span class="s">"sk-mesh-your-key"</span>
+<span class="k">export</span> OPENAI_API_BASE=<span class="s">"http://localhost:4321/v1"</span>
+
+<span class="k">aider</span> --model <span class="s">"openai/anthropic/claude-sonnet-5"</span> --openai-api-key $OPENAI_API_KEY</code></pre>
+    <p>Or add to <code>~/.aider.conf.yml</code>:</p>
+    <pre><code>openai-api-key: sk-mesh-your-key
+openai-api-base: http://localhost:4321/v1
+model: openai/anthropic/claude-sonnet-5</code></pre>
+  </section>
+
+  <!-- ── Errors ── -->
+  <section id="errors">
+    <h2>Errors</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Status</th><th>Code</th><th>Cause</th></tr></thead>
+        <tbody>
+          <tr><td><code>401</code></td><td>unauthorized</td><td>Missing or invalid Authorization header</td></tr>
+          <tr><td><code>403</code></td><td>revoked</td><td>API key has been revoked</td></tr>
+          <tr><td><code>429</code></td><td>rate_limited</td><td>Daily request or token limit reached</td></tr>
+          <tr><td><code>400</code></td><td>bad_request</td><td>Missing <code>model</code> or <code>messages</code> in body</td></tr>
+          <tr><td><code>502</code></td><td>upstream_error</td><td>MeshAPI upstream returned an error</td></tr>
+          <tr><td><code>500</code></td><td>internal_error</td><td>Unexpected server error</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Error Response Format</h3>
+    <pre><code>{
+  <span class="s">"error"</span>: {
+    <span class="s">"message"</span>: <span class="s">"API key has been revoked"</span>,
+    <span class="s">"type"</span>: <span class="s">"invalid_api_key"</span>,
+    <span class="s">"code"</span>: <span class="s">"revoked"</span>
+  }
+}</code></pre>
+  </section>
+
+  <!-- ── Rate Limits ── -->
+  <section id="limits">
+    <h2>Rate Limits</h2>
+    <p>Limits are set per-key in the admin dashboard. Three types of limits are supported:</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Limit Type</th><th>Description</th><th>Reset</th></tr></thead>
+        <tbody>
+          <tr><td><code>requests_per_day</code></td><td>Maximum API calls per calendar day</td><td>Daily at 00:00 UTC</td></tr>
+          <tr><td><code>tokens_per_day</code></td><td>Maximum total tokens (prompt + completion) per day</td><td>Daily at 00:00 UTC</td></tr>
+          <tr><td><code>tokens_total</code></td><td>Lifetime token cap — key stops working when reached</td><td>Never (manual reset required)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>If no limit is set for a type, it is treated as unlimited. When a limit is reached the API returns HTTP 429.</p>
+  </section>
+
+  <!-- ── Usage Check ── -->
+  <section id="usage-check">
+    <h2>Check Your Usage</h2>
+    <p>Enter your API key below to see current usage statistics:</p>
+    <div class="usage-widget">
+      <h4>Live Usage Lookup</h4>
+      <div class="usage-row">
+        <input type="password" id="usageKey" placeholder="sk-mesh-your-key-here" autocomplete="off"/>
+        <button onclick="checkUsage()">Check</button>
+      </div>
+      <div id="usageResult"></div>
+    </div>
+  </section>
+
+</div><!-- /content -->
+</div><!-- /layout -->
+
+<script>
+// Set base URL from current host
+var baseUrl = window.location.protocol + '//' + window.location.host + '/v1';
+document.getElementById('baseUrlCode').textContent = baseUrl;
+
+// Scroll-spy
+var items = document.querySelectorAll('.s-item');
+var sections = document.querySelectorAll('section[id]');
+window.addEventListener('scroll', function() {
+  var pos = window.scrollY + 80;
+  var current = '';
+  sections.forEach(function(s){ if (s.offsetTop <= pos) current = s.id; });
+  items.forEach(function(a){
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}, {passive:true});
+
+// Usage check
+async function checkUsage() {
+  var key = document.getElementById('usageKey').value.trim();
+  var el  = document.getElementById('usageResult');
+  if (!key) { el.innerHTML = '<span style="color:var(--red)">Enter a key first.</span>'; return; }
+  el.innerHTML = '<span style="color:var(--muted)">Checking…</span>';
+  try {
+    var r = await fetch('/v1/usage', { headers: { Authorization: 'Bearer ' + key } });
+    var d = await r.json();
+    if (!r.ok) { el.innerHTML = '<span style="color:var(--red)">Error: ' + (d.error?.message||r.status) + '</span>'; return; }
+    var u = d.usage;
+    function fmt(n){ if(!n)return'0'; if(n>=1e6)return(n/1e6).toFixed(1)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n; }
+    function fc(n){ if(!n)return'$0.00'; if(n<0.0001)return'<$0.0001'; if(n<0.01)return'$'+n.toFixed(4); if(n<1)return'$'+n.toFixed(3); return'$'+n.toFixed(2); }
+    el.innerHTML = '<div style="margin-top:10px;font-size:13px;color:var(--muted);margin-bottom:8px">'
+      + 'Key: <strong style="color:var(--text)">' + (d.key_name||'—') + '</strong>'
+      + ' &nbsp;·&nbsp; Status: <strong style="color:var(--green)">' + d.status + '</strong>'
+      + '</div>'
+      + '<div class="usage-grid">'
+      + '<div class="usage-stat"><div class="lbl">Req Today</div><div class="val">' + fmt(u.requests_today) + '</div></div>'
+      + '<div class="usage-stat"><div class="lbl">Tok Today</div><div class="val">' + fmt(u.tokens_today) + '</div></div>'
+      + '<div class="usage-stat"><div class="lbl">Cost Today</div><div class="val green">' + fc(u.cost_today) + '</div></div>'
+      + '<div class="usage-stat"><div class="lbl">Req Total</div><div class="val">' + fmt(u.requests_total) + '</div></div>'
+      + '<div class="usage-stat"><div class="lbl">Tok Total</div><div class="val">' + fmt(u.tokens_total) + '</div></div>'
+      + '<div class="usage-stat"><div class="lbl">Cost Total</div><div class="val green">' + fc(u.cost_total) + '</div></div>'
+      + '</div>';
+  } catch(e) { el.innerHTML = '<span style="color:var(--red)">Request failed. Is the server running?</span>'; }
+}
+
+document.getElementById('usageKey').addEventListener('keydown', function(e){ if(e.key==='Enter') checkUsage(); });
+</script>
+</body>
+</html>

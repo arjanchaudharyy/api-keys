@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MeshAPI — Platform</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #07101c;
+  --surf:    #0d1b2a;
+  --surf2:   #13253a;
+  --surf3:   #1a3050;
+  --bdr:     #1e3350;
+  --bdr2:    #2a4060;
+  --text:    #dce8f8;
+  --muted:   #5a7499;
+  --muted2:  #3d5a7a;
+  --accent:  #f97316;
+  --accent2: rgba(249,115,22,.12);
+  --green:   #10b981;
+  --green2:  rgba(16,185,129,.12);
+  --blue:    #3b82f6;
+  --blue2:   rgba(59,130,246,.12);
+  --red:     #f43f5e;
+  --red2:    rgba(244,63,94,.1);
+  --yellow:  #f59e0b;
+  --purple:  #8b5cf6;
+}
+html { height: 100%; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',system-ui,sans-serif; font-size:14px; height:100%; display:flex; overflow:hidden; }
+
+/* ── Sidebar ── */
+.sidebar { width:230px; flex-shrink:0; background:var(--surf); border-right:1px solid var(--bdr); display:flex; flex-direction:column; height:100dvh; overflow-y:auto; }
+.main    { flex:1; min-width:0; height:100dvh; overflow-y:auto; }
+.main::-webkit-scrollbar { width:4px; }
+.main::-webkit-scrollbar-thumb { background:var(--surf3); border-radius:2px; }
+
+.s-top   { padding:20px 16px 12px; }
+.s-logo  { display:flex; align-items:center; gap:10px; margin-bottom:2px; }
+.s-logo-mark { width:30px; height:30px; background:linear-gradient(135deg,#f97316,#ea580c); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13px; color:#fff; flex-shrink:0; }
+.s-logo-name { font-size:16px; font-weight:800; letter-spacing:-.03em; }
+.s-logo-name b { color:var(--accent); }
+.s-version { font-size:10px; color:var(--muted2); background:var(--surf2); border:1px solid var(--bdr); padding:2px 7px; border-radius:10px; display:inline-block; margin-top:4px; }
+
+.s-nav   { flex:1; padding:8px 10px; }
+.s-group { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted2); padding:14px 8px 5px; }
+.s-link  { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; border:none; background:none; font-family:inherit; width:100%; text-align:left; text-decoration:none; transition:all .15s; }
+.s-link:hover  { background:var(--surf2); color:var(--text); }
+.s-link.active { background:linear-gradient(90deg,rgba(249,115,22,.15),rgba(249,115,22,.05)); color:var(--accent); font-weight:600; border-left:2px solid var(--accent); padding-left:8px; }
+.s-link svg { width:16px; height:16px; flex-shrink:0; opacity:.8; }
+.s-link.active svg { opacity:1; }
+
+.s-foot  { padding:12px 10px 16px; border-top:1px solid var(--bdr); }
+.s-api-info { background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+.s-api-lbl  { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted2); margin-bottom:4px; }
+.s-api-url  { font-family:'SF Mono',Consolas,monospace; font-size:11px; color:var(--blue); word-break:break-all; }
+.s-logout   { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; color:var(--muted); font-size:13px; cursor:pointer; border:none; background:none; font-family:inherit; width:100%; transition:all .15s; }
+.s-logout:hover { background:var(--red2); color:var(--red); }
+
+/* ── Page header ── */
+.pg-hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:28px 32px 0; gap:16px; }
+.pg-ttl { font-size:24px; font-weight:800; letter-spacing:-.03em; }
+.pg-sub { font-size:13px; color:var(--muted); margin-top:5px; }
+.pg-actions { display:flex; gap:10px; align-items:center; flex-shrink:0; }
+.btn-new { background:var(--accent); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; font-family:inherit; padding:9px 18px; cursor:pointer; display:flex; align-items:center; gap:7px; white-space:nowrap; }
+.btn-new:hover { background:#ea6a0a; }
+.btn-ref { background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; color:var(--muted); font-size:13px; font-family:inherit; padding:9px 14px; cursor:pointer; }
+.btn-ref:hover { color:var(--text); border-color:var(--bdr2); }
+
+/* ── Stats strip ── */
+.stats-strip { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; padding:24px 32px 0; }
+@media(max-width:1200px){ .stats-strip{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:700px) { .stats-strip{ grid-template-columns:repeat(2,1fr); } }
+
+.stat-card { background:var(--surf); border:1px solid var(--bdr); border-radius:10px; padding:16px 18px; position:relative; overflow:hidden; }
+.stat-card::before { content:''; position:absolute; inset:0; border-radius:10px; opacity:0; transition:opacity .2s; }
+.stat-card:hover::before { opacity:1; background:rgba(255,255,255,.01); }
+.stat-ico  { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+.stat-ico svg { width:16px; height:16px; }
+.stat-ico.orange { background:rgba(249,115,22,.12); color:var(--accent); }
+.stat-ico.green  { background:rgba(16,185,129,.12);  color:var(--green);  }
+.stat-ico.blue   { background:rgba(59,130,246,.12);  color:var(--blue);   }
+.stat-ico.purple { background:rgba(139,92,246,.12);  color:var(--purple); }
+.stat-lbl  { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:5px; }
+.stat-val  { font-size:24px; font-weight:800; letter-spacing:-.03em; font-variant-numeric:tabular-nums; line-height:1; }
+.stat-val.green { color:var(--green); }
+.stat-chg  { font-size:11px; color:var(--muted); margin-top:5px; }
+
+/* ── Section ── */
+.section { padding:24px 32px 40px; }
+.sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.sec-ttl { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.sec-cnt { font-size:12px; color:var(--muted); background:var(--surf2); border:1px solid var(--bdr); padding:2px 8px; border-radius:10px; font-variant-numeric:tabular-nums; }
+
+/* ── Table ── */
+.tbl-wrap { background:var(--surf); border:1px solid var(--bdr); border-radius:12px; overflow:hidden; overflow-x:auto; }
+.tbl-wrap::-webkit-scrollbar { height:4px; }
+.tbl-wrap::-webkit-scrollbar-thumb { background:var(--surf3); border-radius:2px; }
+table { width:100%; border-collapse:collapse; min-width:920px; }
+thead th { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); padding:12px 16px; text-align:left; border-bottom:1px solid var(--bdr); background:var(--surf2); white-space:nowrap; }
+tbody tr { border-bottom:1px solid rgba(30,51,80,.5); transition:background .1s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:rgba(255,255,255,.018); }
+td { padding:14px 16px; vertical-align:middle; }
+.empty-row { text-align:center; color:var(--muted); padding:56px 20px !important; font-size:14px; }
+.empty-hint { font-size:12px; color:var(--muted2); margin-top:6px; }
+
+/* ── Key row cells ── */
+.name-cell { display:flex; align-items:center; gap:10px; }
+.status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.status-dot.active  { background:var(--green); box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+.status-dot.revoked { background:var(--muted2); }
+.key-name-text { font-weight:600; font-size:14px; }
+.key-status-badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:.06em; flex-shrink:0; }
+.key-status-badge.active  { background:var(--green2);  color:var(--green); }
+.key-status-badge.revoked { background:var(--surf3);   color:var(--muted); }
+
+.key-code-cell { display:flex; align-items:center; gap:8px; }
+.key-code  { font-family:'SF Mono',Consolas,monospace; font-size:12px; color:var(--muted); letter-spacing:.03em; }
+.copy-mini { background:none; border:none; color:var(--muted2); cursor:pointer; padding:2px 4px; border-radius:4px; display:flex; align-items:center; flex-shrink:0; }
+.copy-mini:hover { color:var(--text); background:var(--surf3); }
+.copy-mini svg { width:13px; height:13px; }
+
+.usg-num   { font-size:13px; font-variant-numeric:tabular-nums; font-weight:500; }
+.usg-sub   { font-size:11px; color:var(--muted); margin-top:2px; }
+.bar-wrap  { height:3px; background:var(--bdr); border-radius:2px; margin-top:6px; max-width:80px; overflow:hidden; }
+.bar-fill  { height:100%; border-radius:2px; }
+.bar-fill.normal { background:var(--blue); }
+.bar-fill.warn   { background:var(--yellow); }
+.bar-fill.crit   { background:var(--red); }
+
+.cost-num  { font-size:13px; font-variant-numeric:tabular-nums; font-weight:600; color:var(--green); }
+.cost-sub  { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.lim-cell  { font-size:12px; color:var(--muted); }
+.lim-tag   { background:var(--surf2); border:1px solid var(--bdr); border-radius:4px; padding:2px 6px; font-size:10px; display:inline-block; margin:1px; white-space:nowrap; }
+
+.row-actions { display:flex; gap:4px; }
+.act  { font-size:12px; font-family:inherit; padding:5px 11px; border-radius:6px; cursor:pointer; border:1px solid var(--bdr); background:var(--surf2); color:var(--muted); font-weight:500; white-space:nowrap; transition:all .12s; }
+.act:hover { border-color:var(--bdr2); color:var(--text); }
+.act-edit:hover    { border-color:rgba(59,130,246,.5);  background:var(--blue2);  color:var(--blue);  }
+.act-revoke:hover  { border-color:rgba(244,63,94,.4);   background:var(--red2);   color:var(--red);   }
+.act-restore:hover { border-color:rgba(16,185,129,.4);  background:var(--green2); color:var(--green); }
+.act-delete:hover  { border-color:rgba(244,63,94,.4);   background:var(--red2);   color:var(--red);   }
+
+/* ── Modals ── */
+.overlay { position:fixed; inset:0; background:rgba(4,8,16,.85); display:flex; align-items:center; justify-content:center; z-index:200; opacity:0; pointer-events:none; transition:opacity .2s; padding:16px; backdrop-filter:blur(4px); }
+.overlay.open { opacity:1; pointer-events:all; }
+.modal { background:var(--surf); border:1px solid var(--bdr2); border-radius:14px; width:500px; max-width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 25px 60px rgba(0,0,0,.6); }
+.modal::-webkit-scrollbar { width:3px; }
+.modal::-webkit-scrollbar-thumb { background:var(--surf3); }
+.modal-hdr { padding:22px 24px 18px; border-bottom:1px solid var(--bdr); display:flex; align-items:center; justify-content:space-between; }
+.modal-ttl { font-size:17px; font-weight:700; letter-spacing:-.01em; }
+.modal-ttl .sub { font-size:13px; font-weight:400; color:var(--muted); margin-top:3px; }
+.modal-x { background:none; border:none; color:var(--muted); cursor:pointer; padding:4px 7px; border-radius:6px; font-size:15px; }
+.modal-x:hover { background:var(--surf2); color:var(--text); }
+.modal-body { padding:22px 24px; display:flex; flex-direction:column; gap:18px; }
+.modal-foot { padding:16px 24px 22px; border-top:1px solid var(--bdr); display:flex; justify-content:flex-end; gap:10px; }
+
+.field label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px; }
+.field label .opt { text-transform:none; letter-spacing:0; font-weight:400; color:var(--muted2); font-size:10px; margin-left:4px; }
+.field input { width:100%; background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; color:var(--text); font-size:14px; font-family:inherit; padding:11px 14px; outline:none; transition:border-color .15s; }
+.field input:focus { border-color:var(--blue); background:var(--bg); }
+.field input::placeholder { color:var(--muted2); }
+.field-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+
+.btn-primary { background:var(--accent); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; font-family:inherit; padding:10px 20px; cursor:pointer; }
+.btn-primary:hover { background:#ea6a0a; }
+.btn-ghost   { background:var(--surf2); border:1px solid var(--bdr); border-radius:8px; color:var(--muted); font-size:13px; font-family:inherit; padding:10px 16px; cursor:pointer; }
+.btn-ghost:hover { color:var(--text); border-color:var(--bdr2); }
+
+/* Reveal */
+.reveal-warn { background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:8px; padding:12px 14px; font-size:13px; color:#fcd34d; line-height:1.6; display:flex; gap:10px; align-items:flex-start; }
+.reveal-warn svg { width:16px; height:16px; flex-shrink:0; margin-top:2px; color:#f59e0b; }
+.key-reveal-box { background:var(--bg); border:1px solid var(--bdr2); border-radius:9px; padding:14px 16px; display:flex; align-items:center; gap:12px; }
+.key-reveal-box code { font-family:'SF Mono',Consolas,monospace; font-size:12.5px; color:#6ee7b7; flex:1; word-break:break-all; line-height:1.6; }
+.copy-btn-lg { background:var(--surf2); border:1px solid var(--bdr); border-radius:7px; color:var(--muted); font-size:12px; padding:7px 14px; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; transition:all .12s; }
+.copy-btn-lg:hover { color:var(--text); border-color:var(--bdr2); }
+.copy-btn-lg.ok { color:var(--green); border-color:rgba(16,185,129,.3); background:var(--green2); }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="s-top">
+    <div class="s-logo">
+      <div class="s-logo-mark">M</div>
+      <div class="s-logo-name">Mesh<b>API</b></div>
+    </div>
+    <div class="s-version">Platform v1</div>
+  </div>
+
+  <nav class="s-nav">
+    <div class="s-group">Overview</div>
+    <button class="s-link active" onclick="showView('keys',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
+      API Keys
+    </button>
+    <button class="s-link" onclick="showView('usage',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+      Usage &amp; Cost
+    </button>
+    <button class="s-link" onclick="showView('pricing',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185ZM9.75 9h.008v.008H9.75V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm4.125 4.5h.008v.008h-.008V13.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+      Model Pricing
+    </button>
+    <div class="s-group">Resources</div>
+    <a class="s-link" href="/docs" target="_blank">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+      Documentation ↗
+    </a>
+  </nav>
+
+  <div class="s-foot">
+    <div class="s-api-info">
+      <div class="s-api-lbl">API Endpoint</div>
+      <div class="s-api-url" id="apiBaseUrl">localhost:4321/v1</div>
+    </div>
+    <button class="s-logout" onclick="logout()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- ─── API Keys view ──────────────────────────────────────────────────── -->
+  <div id="viewKeys">
+    <div class="pg-hdr">
+      <div>
+        <div class="pg-ttl">API Keys</div>
+        <div class="pg-sub">Manage access keys for the free LLM proxy</div>
+      </div>
+      <div class="pg-actions">
+        <button class="btn-ref" onclick="load()" title="Refresh">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+        </button>
+        <button class="btn-new" onclick="openCreate()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Create Key
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat-card">
+        <div class="stat-ico blue"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg></div>
+        <div class="stat-lbl">API Users</div>
+        <div class="stat-val" id="sActive">—</div>
+        <div class="stat-chg" id="sActiveChg">active keys</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico orange"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/></svg></div>
+        <div class="stat-lbl">Total Keys</div>
+        <div class="stat-val" id="sTotal">—</div>
+        <div class="stat-chg">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico blue"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg></div>
+        <div class="stat-lbl">Requests Today</div>
+        <div class="stat-val" id="sReqToday">—</div>
+        <div class="stat-chg">all keys combined</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico purple"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg></div>
+        <div class="stat-lbl">Tokens Today</div>
+        <div class="stat-val" id="sTokToday">—</div>
+        <div class="stat-chg">prompt + completion</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico green"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></div>
+        <div class="stat-lbl">Est. Cost Today</div>
+        <div class="stat-val green" id="sCostToday">—</div>
+        <div class="stat-chg">at market rates</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico green"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/></svg></div>
+        <div class="stat-lbl">Total Cost (All Time)</div>
+        <div class="stat-val green" id="sCostTotal">—</div>
+        <div class="stat-chg">since first request</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-ttl">Keys <span class="sec-cnt" id="keyCount">0</span></div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name / Status</th>
+              <th>Key</th>
+              <th>Created</th>
+              <th>Last Used</th>
+              <th>Usage Today</th>
+              <th>Usage Total</th>
+              <th>Est. Cost</th>
+              <th>Limits</th>
+              <th style="width:140px"></th>
+            </tr>
+          </thead>
+          <tbody id="keysBody">
+            <tr><td colspan="9" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Usage & Cost view ──────────────────────────────────────────────── -->
+  <div id="viewUsage" style="display:none">
+    <div class="pg-hdr">
+      <div>
+        <div class="pg-ttl">Usage &amp; Cost</div>
+        <div class="pg-sub">Per-key breakdown — estimated at published model pricing rates</div>
+      </div>
+    </div>
+    <div class="section" style="padding-top:24px">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Key Name</th>
+              <th>Status</th>
+              <th>Requests Today</th>
+              <th>Tokens Today</th>
+              <th>Cost Today</th>
+              <th>Requests Total</th>
+              <th>Tokens Total</th>
+              <th>Cost Total</th>
+              <th>Last Used</th>
+            </tr>
+          </thead>
+          <tbody id="usageBody">
+            <tr><td colspan="9" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:14px;padding:0 2px;line-height:1.6">
+        Costs are estimated using published model pricing at time of request. Actual upstream billing may vary. All traffic is routed through the MeshAPI demo endpoint — you are not directly billed by model providers.
+      </p>
+    </div>
+  </div>
+
+  <!-- ─── Pricing view ───────────────────────────────────────────────────── -->
+  <div id="viewPricing" style="display:none">
+    <div class="pg-hdr">
+      <div>
+        <div class="pg-ttl">Model Pricing</div>
+        <div class="pg-sub">Published market rates used for cost estimation — all access is free through this proxy</div>
+      </div>
+    </div>
+    <div class="section" style="padding-top:24px">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Model ID</th>
+              <th>Provider</th>
+              <th>Input (per 1M tokens)</th>
+              <th>Output (per 1M tokens)</th>
+              <th>Blended (per 1M tokens)</th>
+            </tr>
+          </thead>
+          <tbody id="pricingBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── Create Key Modal ──────────────────────────────────────────────────── -->
+<div class="overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-ttl">Create API Key</div>
+        <div class="modal-ttl sub">Generate a new key with optional rate limits</div>
+      </div>
+      <button class="modal-x" onclick="closeCreate()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Key Name</label>
+        <input type="text" id="cName" placeholder="e.g. Production App, Alice's Key" maxlength="80"/>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Requests / Day <span class="opt">optional</span></label>
+          <input type="number" id="cReqDay" placeholder="No limit" min="1"/>
+        </div>
+        <div class="field">
+          <label>Tokens / Day <span class="opt">optional</span></label>
+          <input type="number" id="cTokDay" placeholder="No limit" min="1"/>
+        </div>
+        <div class="field">
+          <label>Tokens Total <span class="opt">optional</span></label>
+          <input type="number" id="cTokTotal" placeholder="No limit" min="1"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeCreate()">Cancel</button>
+      <button class="btn-primary" onclick="doCreate()">Generate Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Reveal Key Modal ──────────────────────────────────────────────────── -->
+<div class="overlay" id="revealModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Key Created Successfully</div>
+    </div>
+    <div class="modal-body">
+      <div class="reveal-warn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+        <span>This is the only time you'll see the complete key. Copy and store it securely — the dashboard will only show a masked version after this.</span>
+      </div>
+      <div class="key-reveal-box">
+        <code id="revealVal"></code>
+        <button class="copy-btn-lg" id="revealCopyBtn" onclick="copyReveal()">Copy</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-primary" onclick="closeReveal()">Done — I've saved it</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Edit Key Modal ────────────────────────────────────────────────────── -->
+<div class="overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Edit Key</div>
+      <button class="modal-x" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="eId"/>
+      <div class="field">
+        <label>Key Name</label>
+        <input type="text" id="eName" maxlength="80"/>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Requests / Day</label>
+          <input type="number" id="eReqDay" placeholder="No limit" min="1"/>
+        </div>
+        <div class="field">
+          <label>Tokens / Day</label>
+          <input type="number" id="eTokDay" placeholder="No limit" min="1"/>
+        </div>
+        <div class="field">
+          <label>Tokens Total</label>
+          <input type="number" id="eTokTotal" placeholder="No limit" min="1"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeEdit()">Cancel</button>
+      <button class="btn-primary" onclick="doEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var keysData = [];
+var revealKey = '';
+
+// Pricing table (matches server)
+var PRICING = {
+  'anthropic/claude-fable-5':       [15, 75],
+  'anthropic/claude-sonnet-5':      [3,  15],
+  'anthropic/claude-opus-4.8':      [15, 75],
+  'anthropic/claude-opus-4.8-fast': [15, 75],
+  'anthropic/claude-opus-4.7':      [15, 60],
+  'anthropic/claude-opus-4.7-fast': [15, 60],
+  'anthropic/claude-opus-4.6':      [15, 60],
+  'anthropic/claude-opus-4.5':      [15, 60],
+  'anthropic/claude-haiku-4.5':     [0.8, 4],
+  'anthropic/claude-3-haiku':       [0.25, 1.25],
+  'openai/gpt-4o':                  [2.5, 10],
+  'openai/gpt-4.1':                 [2,   8],
+  'openai/gpt-4.1-mini':            [0.4, 1.6],
+  'openai/gpt-4.1-nano':            [0.1, 0.4],
+  'openai/gpt-4o-mini':             [0.15, 0.6],
+  'openai/gpt-4o-search-preview':   [2.5, 10],
+  'openai/o4-mini':                 [1.1, 4.4],
+  'openai/gpt-3.5-turbo':           [0.5, 1.5],
+  'google/gemini-3.1-pro':          [1.25, 5],
+  'google/gemini-3.1-pro-preview':  [1.25, 5],
+  'google/gemini-3.5-flash':        [0.3, 1.0],
+  'google/gemini-2.5-pro':          [1.25, 10],
+  'google/gemini-2.5-pro-preview':  [1.25, 10],
+  'google/gemini-2.5-flash':        [0.3, 1.0],
+  'google/gemini-2.5-flash-lite':   [0.1, 0.4],
+};
+
+document.getElementById('apiBaseUrl').textContent = window.location.host + '/v1';
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  var opts = { method: method, credentials: 'include' };
+  if (body) { opts.headers = {'Content-Type':'application/json'}; opts.body = JSON.stringify(body); }
+  return (await fetch(path, opts)).json();
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+async function load() {
+  var stats = await api('GET', '/api/admin/stats');
+  var keys  = await api('GET', '/api/admin/keys');
+  keysData  = Array.isArray(keys) ? keys : [];
+
+  // Compute all-time totals from keys
+  var totalCost = 0, totalReq = 0, totalTok = 0;
+  keysData.forEach(function(k) {
+    totalCost += (k.usage.cost_total || 0);
+    totalReq  += k.usage.requests_total;
+    totalTok  += k.usage.tokens_total;
+  });
+
+  document.getElementById('sActive').textContent      = stats.active_keys;
+  document.getElementById('sActiveChg').textContent   = stats.active_keys === 1 ? '1 active key' : stats.active_keys + ' active keys';
+  document.getElementById('sTotal').textContent       = stats.total_keys;
+  document.getElementById('sReqToday').textContent    = fmt(stats.requests_today);
+  document.getElementById('sTokToday').textContent    = fmt(stats.tokens_today);
+  document.getElementById('sCostToday').textContent   = fmtCost(stats.cost_today);
+  document.getElementById('sCostTotal').textContent   = fmtCost(totalCost);
+  document.getElementById('keyCount').textContent     = keysData.length;
+
+  renderKeys(keysData);
+  renderUsage(keysData);
+  renderPricing();
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmt(n) {
+  if (n == null) return '—';
+  if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toString();
+}
+function fmtCost(n) {
+  if (!n) return '$0.00';
+  if (n < 0.0001) return '<$0.0001';
+  if (n < 0.01)   return '$' + n.toFixed(4);
+  if (n < 1)      return '$' + n.toFixed(3);
+  return '$' + n.toFixed(2);
+}
+function fmtDate(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'2-digit'});
+}
+function fmtAge(ms) {
+  if (!ms) return 'Never';
+  var s = (Date.now()-ms)/1000;
+  if (s < 60)    return 'Just now';
+  if (s < 3600)  return Math.floor(s/60)+'m ago';
+  if (s < 86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+function maskKey(k) { return k.slice(0,14) + '·····' + k.slice(-4); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function limitStr(l) {
+  if (!l.requests_per_day && !l.tokens_per_day && !l.tokens_total) return 'Unlimited';
+  var p = [];
+  if (l.requests_per_day) p.push(fmt(l.requests_per_day)+' req/d');
+  if (l.tokens_per_day)   p.push(fmt(l.tokens_per_day)+' tok/d');
+  if (l.tokens_total)     p.push(fmt(l.tokens_total)+' total');
+  return p.join(' · ');
+}
+function bar(used, limit) {
+  if (!limit) return '';
+  var pct = Math.min(100, (used/limit)*100);
+  var cls = pct > 90 ? 'crit' : pct > 70 ? 'warn' : 'normal';
+  return '<div class="bar-wrap"><div class="bar-fill '+cls+'" style="width:'+pct.toFixed(0)+'%"></div></div>';
+}
+
+// ── Render keys ───────────────────────────────────────────────────────────────
+function renderKeys(keys) {
+  var tb = document.getElementById('keysBody');
+  if (!keys.length) {
+    tb.innerHTML = '<tr><td colspan="9" class="empty-row">No API keys yet<div class="empty-hint">Click "Create Key" to generate your first key</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = keys.map(function(k) {
+    var a = k.status === 'active';
+    var b = bar(k.usage.requests_today, k.limits.requests_per_day);
+    return '<tr>'
+      +'<td><div class="name-cell">'
+        +'<span class="status-dot '+(a?'active':'revoked')+'"></span>'
+        +'<div>'
+          +'<div class="key-name-text">'+esc(k.name)+'</div>'
+          +'<span class="key-status-badge '+(a?'active':'revoked')+'">'+(a?'Active':'Revoked')+'</span>'
+        +'</div>'
+      +'</div></td>'
+      +'<td><div class="key-code-cell">'
+        +'<code class="key-code">'+esc(maskKey(k.key))+'</code>'
+        +'<button class="copy-mini" onclick="copyKey(\''+esc(k.key)+'\',this)" title="Copy key">'
+          +'<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+        +'</button>'
+      +'</div></td>'
+      +'<td style="color:var(--muted);font-size:13px">'+fmtDate(k.created_at)+'</td>'
+      +'<td style="color:var(--muted);font-size:13px">'+fmtAge(k.last_used)+'</td>'
+      +'<td><div class="usg-num">'+fmt(k.usage.requests_today)+' req</div>'
+          +'<div class="usg-sub">'+fmt(k.usage.tokens_today)+' tokens</div>'+b+'</td>'
+      +'<td><div class="usg-num">'+fmt(k.usage.requests_total)+' req</div>'
+          +'<div class="usg-sub">'+fmt(k.usage.tokens_total)+' tokens</div></td>'
+      +'<td><div class="cost-num">'+fmtCost(k.usage.cost_today)+'</div>'
+          +'<div class="cost-sub">'+fmtCost(k.usage.cost_total)+' total</div></td>'
+      +'<td><span class="lim-cell">'+esc(limitStr(k.limits))+'</span></td>'
+      +'<td><div class="row-actions">'
+        +(a?'<button class="act act-edit" onclick="openEdit(\''+k.id+'\')">Edit</button>':'')
+        +(a?'<button class="act act-revoke" onclick="revokeKey(\''+k.id+'\',\''+esc(k.name)+'\')">Revoke</button>'
+            :'<button class="act act-restore" onclick="restoreKey(\''+k.id+'\')">Restore</button>')
+        +'<button class="act act-delete" onclick="deleteKey(\''+k.id+'\',\''+esc(k.name)+'\')">Delete</button>'
+      +'</div></td>'
+    +'</tr>';
+  }).join('');
+}
+
+// ── Render usage ──────────────────────────────────────────────────────────────
+function renderUsage(keys) {
+  var tb = document.getElementById('usageBody');
+  if (!keys.length) {
+    tb.innerHTML = '<tr><td colspan="9" class="empty-row">No keys yet.</td></tr>';
+    return;
+  }
+  tb.innerHTML = keys.map(function(k) {
+    var a = k.status === 'active';
+    return '<tr>'
+      +'<td><span class="key-name-text">'+esc(k.name)+'</span></td>'
+      +'<td><span class="key-status-badge '+(a?'active':'revoked')+'">'+(a?'Active':'Revoked')+'</span></td>'
+      +'<td class="usg-num">'+fmt(k.usage.requests_today)+'</td>'
+      +'<td class="usg-num">'+fmt(k.usage.tokens_today)+'</td>'
+      +'<td class="cost-num">'+fmtCost(k.usage.cost_today)+'</td>'
+      +'<td class="usg-num">'+fmt(k.usage.requests_total)+'</td>'
+      +'<td class="usg-num">'+fmt(k.usage.tokens_total)+'</td>'
+      +'<td class="cost-num">'+fmtCost(k.usage.cost_total)+'</td>'
+      +'<td style="color:var(--muted);font-size:13px">'+fmtAge(k.last_used)+'</td>'
+    +'</tr>';
+  }).join('');
+}
+
+// ── Render pricing ────────────────────────────────────────────────────────────
+var PROVIDER_COLORS = { anthropic:'#fb923c', openai:'#60a5fa', google:'#86efac' };
+function renderPricing() {
+  var tb = document.getElementById('pricingBody');
+  if (tb.children.length > 0) return; // already rendered
+  tb.innerHTML = Object.keys(PRICING).map(function(id) {
+    var p       = PRICING[id];
+    var prov    = id.split('/')[0];
+    var color   = PROVIDER_COLORS[prov] || '#e0e8f0';
+    var blended = ((p[0] + p[1]) / 2).toFixed(2);
+    return '<tr>'
+      +'<td><code style="font-family:\'SF Mono\',Consolas,monospace;font-size:12.5px;color:var(--blue)">'+esc(id)+'</code></td>'
+      +'<td><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;background:rgba(255,255,255,.06);color:'+color+'">'+prov+'</span></td>'
+      +'<td style="color:var(--green);font-variant-numeric:tabular-nums">$'+p[0].toFixed(p[0]<1?2:0)+' / 1M</td>'
+      +'<td style="color:#fcd34d;font-variant-numeric:tabular-nums">$'+p[1].toFixed(p[1]<1?2:0)+' / 1M</td>'
+      +'<td style="color:var(--muted);font-variant-numeric:tabular-nums">~$'+blended+' / 1M</td>'
+    +'</tr>';
+  }).join('');
+}
+
+// ── Views ─────────────────────────────────────────────────────────────────────
+function showView(v, btn) {
+  document.querySelectorAll('.s-link').forEach(function(e){e.classList.remove('active');});
+  if (btn) btn.classList.add('active');
+  document.getElementById('viewKeys').style.display    = v==='keys'    ? '' : 'none';
+  document.getElementById('viewUsage').style.display   = v==='usage'   ? '' : 'none';
+  document.getElementById('viewPricing').style.display = v==='pricing' ? '' : 'none';
+}
+
+// ── Create ────────────────────────────────────────────────────────────────────
+function openCreate() {
+  ['cName','cReqDay','cTokDay','cTokTotal'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('createModal').classList.add('open');
+  setTimeout(function(){ document.getElementById('cName').focus(); }, 50);
+}
+function closeCreate() { document.getElementById('createModal').classList.remove('open'); }
+async function doCreate() {
+  var name = document.getElementById('cName').value.trim() || 'Unnamed Key';
+  var lim  = {
+    requests_per_day: parseInt(document.getElementById('cReqDay').value)   || null,
+    tokens_per_day:   parseInt(document.getElementById('cTokDay').value)   || null,
+    tokens_total:     parseInt(document.getElementById('cTokTotal').value) || null,
+  };
+  var key = await api('POST', '/api/admin/keys', { name: name, limits: lim });
+  closeCreate();
+  revealKey = key.key;
+  document.getElementById('revealVal').textContent = key.key;
+  var b = document.getElementById('revealCopyBtn');
+  b.textContent = 'Copy'; b.classList.remove('ok');
+  document.getElementById('revealModal').classList.add('open');
+  load();
+}
+
+// ── Reveal ────────────────────────────────────────────────────────────────────
+function closeReveal() { document.getElementById('revealModal').classList.remove('open'); }
+function copyReveal() {
+  navigator.clipboard.writeText(revealKey).then(function() {
+    var b = document.getElementById('revealCopyBtn');
+    b.textContent = 'Copied!'; b.classList.add('ok');
+  });
+}
+
+// ── Edit ──────────────────────────────────────────────────────────────────────
+function openEdit(id) {
+  var k = keysData.find(function(k){ return k.id===id; });
+  if (!k) return;
+  document.getElementById('eId').value      = k.id;
+  document.getElementById('eName').value    = k.name;
+  document.getElementById('eReqDay').value    = k.limits.requests_per_day || '';
+  document.getElementById('eTokDay').value    = k.limits.tokens_per_day   || '';
+  document.getElementById('eTokTotal').value  = k.limits.tokens_total     || '';
+  document.getElementById('editModal').classList.add('open');
+  setTimeout(function(){ document.getElementById('eName').focus(); }, 50);
+}
+function closeEdit() { document.getElementById('editModal').classList.remove('open'); }
+async function doEdit() {
+  var id = document.getElementById('eId').value;
+  await api('PATCH', '/api/admin/keys/'+id, {
+    name:   document.getElementById('eName').value.trim(),
+    limits: {
+      requests_per_day: parseInt(document.getElementById('eReqDay').value)   || null,
+      tokens_per_day:   parseInt(document.getElementById('eTokDay').value)   || null,
+      tokens_total:     parseInt(document.getElementById('eTokTotal').value) || null,
+    }
+  });
+  closeEdit(); load();
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function copyKey(key, btn) {
+  navigator.clipboard.writeText(key).then(function() {
+    btn.style.color = 'var(--green)';
+    setTimeout(function(){ btn.style.color = ''; }, 1500);
+  });
+}
+async function revokeKey(id, name) {
+  if (!confirm('Revoke "'+name+'"?\n\nThis key will stop working immediately. You can restore it later.')) return;
+  await api('PATCH', '/api/admin/keys/'+id, { status:'revoked' }); load();
+}
+async function restoreKey(id) {
+  await api('PATCH', '/api/admin/keys/'+id, { status:'active' }); load();
+}
+async function deleteKey(id, name) {
+  if (!confirm('Permanently delete "'+name+'"?\n\nThis will delete all usage data and cannot be undone.')) return;
+  await api('DELETE', '/api/admin/keys/'+id); load();
+}
+async function logout() { await api('POST', '/api/logout'); window.location='/login'; }
+
+// ── Modal overlay close ───────────────────────────────────────────────────────
+document.querySelectorAll('.overlay').forEach(function(el) {
+  el.addEventListener('click', function(e) { if (e.target===el) el.classList.remove('open'); });
+});
+document.getElementById('createModal').addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey) doCreate(); });
+document.getElementById('editModal').addEventListener('keydown',   function(e){ if(e.key==='Enter'&&!e.shiftKey) doEdit();   });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
