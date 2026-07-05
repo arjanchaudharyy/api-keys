@@ -8,11 +8,9 @@ const https   = require('https');
 const PORT        = Number(process.env.PORT) || 4321;
 const ADMIN_PASS  = process.env.ADMIN_PASSWORD || 'api@dumbfuck123';
 const SESSION_KEY = process.env.SESSION_SECRET || ADMIN_PASS + ':session_v1';
-const DATA_FILE   = process.env.VERCEL
-  ? '/tmp/meshapi-data.json'
-  : path.join(process.cwd(), 'data.json');
+const DATA_FILE   = path.join(process.cwd(), 'data.json');
 const HTML_DIR    = __dirname;
-const USE_KV      = !!(process.env.KV_REST_API_URL);
+const USE_DB      = !!(process.env.DATABASE_URL);
 const DEMO_HOST   = 'gids.meshapi.ai';
 const DEMO_PATH   = '/apps/chat-app/api/chat';
 
@@ -57,23 +55,60 @@ const MODELS = Object.keys(PRICING).map(id => ({
   owned_by: id.split('/')[0],
 }));
 
-// ── DB ────────────────────────────────────────────────────────────────────────
+// ── DB (NeonDB or local JSON file fallback) ───────────────────────────────────
+let _sql = null;
+function getSql() {
+  if (!_sql) {
+    const { neon } = require('@neondatabase/serverless');
+    _sql = neon(process.env.DATABASE_URL);
+  }
+  return _sql;
+}
+
+let _dbInited = false;
+async function initDB() {
+  if (!USE_DB || _dbInited) return;
+  const sql = getSql();
+  await sql`CREATE TABLE IF NOT EXISTS api_keys (
+    id               TEXT             PRIMARY KEY,
+    key              TEXT             UNIQUE NOT NULL,
+    name             TEXT             NOT NULL DEFAULT 'Unnamed Key',
+    status           TEXT             NOT NULL DEFAULT 'active',
+    created_at       BIGINT           NOT NULL,
+    last_used        BIGINT,
+    lim_req_day      INTEGER,
+    lim_tok_day      INTEGER,
+    lim_tok_total    INTEGER,
+    usage_req_total  INTEGER          NOT NULL DEFAULT 0,
+    usage_tok_total  INTEGER          NOT NULL DEFAULT 0,
+    usage_cost_total DOUBLE PRECISION NOT NULL DEFAULT 0,
+    usage_req_today  INTEGER          NOT NULL DEFAULT 0,
+    usage_tok_today  INTEGER          NOT NULL DEFAULT 0,
+    usage_cost_today DOUBLE PRECISION NOT NULL DEFAULT 0,
+    last_reset       TEXT             NOT NULL DEFAULT ''
+  )`;
+  _dbInited = true;
+}
+
+function rowToKey(r) {
+  return {
+    id: r.id, key: r.key, name: r.name, status: r.status,
+    created_at: Number(r.created_at),
+    last_used:  r.last_used ? Number(r.last_used) : null,
+    limits: { requests_per_day: r.lim_req_day, tokens_per_day: r.lim_tok_day, tokens_total: r.lim_tok_total },
+    usage: {
+      requests_total: Number(r.usage_req_total), tokens_total: Number(r.usage_tok_total), cost_total: Number(r.usage_cost_total),
+      requests_today: Number(r.usage_req_today), tokens_today: Number(r.usage_tok_today), cost_today: Number(r.usage_cost_today),
+      last_reset: r.last_reset,
+    },
+  };
+}
+
+// Local file fallback
 async function dbRead() {
-  if (USE_KV) {
-    const { kv } = require('@vercel/kv');
-    return (await kv.get('meshapi:data')) || { keys: [] };
-  }
-  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
-  catch { return { keys: [] }; }
+  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return { keys: [] }; }
 }
-async function dbWrite(d) {
-  if (USE_KV) {
-    const { kv } = require('@vercel/kv');
-    await kv.set('meshapi:data', d);
-  } else {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(d, null, 2));
-  }
-}
+async function dbWrite(d) { fs.writeFileSync(DATA_FILE, JSON.stringify(d, null, 2)); }
 
 // ── Sessions (stateless HMAC — works across serverless cold starts) ────────────
 function sessionCreate() {
@@ -108,25 +143,48 @@ function resetDaily(k) {
 }
 
 // ── Key CRUD ──────────────────────────────────────────────────────────────────
+async function keyList() {
+  if (USE_DB) {
+    await initDB();
+    const rows = await getSql()`SELECT * FROM api_keys ORDER BY created_at DESC`;
+    return rows.map(rowToKey);
+  }
+  return (await dbRead()).keys;
+}
+
+async function keyById(id) {
+  if (USE_DB) {
+    await initDB();
+    const rows = await getSql()`SELECT * FROM api_keys WHERE id = ${id}`;
+    return rows[0] ? rowToKey(rows[0]) : null;
+  }
+  return (await dbRead()).keys.find(k => k.id === id) || null;
+}
+
 async function keyCreate(name, limits = {}) {
+  const id    = crypto.randomBytes(8).toString('hex');
+  const key   = 'sk-mesh-' + crypto.randomBytes(20).toString('hex');
+  const n     = (name || 'Unnamed Key').slice(0, 80);
+  const now   = Date.now();
+  const today = todayStr();
+  const lrd   = limits.requests_per_day || null;
+  const ltd   = limits.tokens_per_day   || null;
+  const ltt   = limits.tokens_total     || null;
+
+  if (USE_DB) {
+    await initDB();
+    const rows = await getSql()`
+      INSERT INTO api_keys (id, key, name, status, created_at, lim_req_day, lim_tok_day, lim_tok_total, last_reset)
+      VALUES (${id}, ${key}, ${n}, 'active', ${now}, ${lrd}, ${ltd}, ${ltt}, ${today})
+      RETURNING *`;
+    return rowToKey(rows[0]);
+  }
+
   const d = await dbRead();
   const k = {
-    id:         crypto.randomBytes(8).toString('hex'),
-    key:        'sk-mesh-' + crypto.randomBytes(20).toString('hex'),
-    name:       (name || 'Unnamed Key').slice(0, 80),
-    created_at: Date.now(),
-    last_used:  null,
-    status:     'active',
-    limits: {
-      requests_per_day: limits.requests_per_day || null,
-      tokens_per_day:   limits.tokens_per_day   || null,
-      tokens_total:     limits.tokens_total     || null,
-    },
-    usage: {
-      requests_total: 0, tokens_total: 0, cost_total: 0,
-      requests_today: 0, tokens_today: 0, cost_today: 0,
-      last_reset: todayStr()
-    }
+    id, key, name: n, status: 'active', created_at: now, last_used: null,
+    limits: { requests_per_day: lrd, tokens_per_day: ltd, tokens_total: ltt },
+    usage:  { requests_total: 0, tokens_total: 0, cost_total: 0, requests_today: 0, tokens_today: 0, cost_today: 0, last_reset: today },
   };
   d.keys.push(k);
   await dbWrite(d);
@@ -134,24 +192,46 @@ async function keyCreate(name, limits = {}) {
 }
 
 async function keyPatch(id, patch) {
+  if (USE_DB) {
+    await initDB();
+    const sql = getSql();
+    const cur = await sql`SELECT * FROM api_keys WHERE id = ${id}`;
+    if (!cur[0]) return null;
+    const c = cur[0];
+    const name   = patch.name   != null ? String(patch.name).slice(0, 80) : c.name;
+    const status = patch.status != null ? (patch.status === 'active' ? 'active' : 'revoked') : c.status;
+    const lrd    = patch.limits?.requests_per_day !== undefined ? (patch.limits.requests_per_day || null) : c.lim_req_day;
+    const ltd    = patch.limits?.tokens_per_day   !== undefined ? (patch.limits.tokens_per_day   || null) : c.lim_tok_day;
+    const ltt    = patch.limits?.tokens_total     !== undefined ? (patch.limits.tokens_total     || null) : c.lim_tok_total;
+    const rows = await sql`
+      UPDATE api_keys SET name=${name}, status=${status}, lim_req_day=${lrd}, lim_tok_day=${ltd}, lim_tok_total=${ltt}
+      WHERE id=${id} RETURNING *`;
+    return rows[0] ? rowToKey(rows[0]) : null;
+  }
+
   const d = await dbRead();
   const k = d.keys.find(k => k.id === id);
   if (!k) return null;
   if (patch.name   != null) k.name   = String(patch.name).slice(0, 80);
   if (patch.status != null) k.status = patch.status === 'active' ? 'active' : 'revoked';
-  if (patch.limits != null) {
+  if (patch.limits != null)
     for (const f of ['requests_per_day', 'tokens_per_day', 'tokens_total'])
       if (patch.limits[f] !== undefined) k.limits[f] = patch.limits[f] || null;
-  }
   await dbWrite(d);
   return k;
 }
 
 async function keyDelete(id) {
+  // Soft delete — row stays forever with full usage history
+  if (USE_DB) {
+    await initDB();
+    const rows = await getSql()`UPDATE api_keys SET status='deleted' WHERE id=${id} RETURNING id`;
+    return rows.length > 0;
+  }
   const d = await dbRead();
-  const i = d.keys.findIndex(k => k.id === id);
-  if (i < 0) return false;
-  d.keys.splice(i, 1);
+  const k = d.keys.find(k => k.id === id);
+  if (!k) return false;
+  k.status = 'deleted';
   await dbWrite(d);
   return true;
 }
@@ -159,45 +239,91 @@ async function keyDelete(id) {
 async function keyAuth(authHeader) {
   const token = String(authHeader || '').replace(/^Bearer\s+/, '').trim();
   if (!token) return { err: 'missing_api_key', status: 401 };
+
+  if (USE_DB) {
+    await initDB();
+    const today = todayStr();
+    const rows = await getSql()`SELECT * FROM api_keys WHERE key=${token}`;
+    if (!rows[0])              return { err: 'invalid_api_key', status: 401 };
+    const r = rows[0];
+    if (r.status !== 'active') return { err: 'revoked_api_key', status: 403 };
+    const rToday = r.last_reset === today ? Number(r.usage_req_today) : 0;
+    const tToday = r.last_reset === today ? Number(r.usage_tok_today) : 0;
+    if (r.lim_req_day   != null && rToday                    >= r.lim_req_day)   return { err: 'daily_request_limit_exceeded', status: 429 };
+    if (r.lim_tok_day   != null && tToday                    >= r.lim_tok_day)   return { err: 'daily_token_limit_exceeded',   status: 429 };
+    if (r.lim_tok_total != null && Number(r.usage_tok_total) >= r.lim_tok_total) return { err: 'total_token_limit_exceeded',   status: 429 };
+    return { id: r.id };
+  }
+
   const d = await dbRead();
   const k = d.keys.find(k => k.key === token);
-  if (!k)                    return { err: 'invalid_api_key',   status: 401 };
-  if (k.status !== 'active') return { err: 'revoked_api_key',   status: 403 };
+  if (!k)                    return { err: 'invalid_api_key', status: 401 };
+  if (k.status !== 'active') return { err: 'revoked_api_key', status: 403 };
   resetDaily(k);
-  if (k.limits.requests_per_day != null && k.usage.requests_today >= k.limits.requests_per_day)
-    return { err: 'daily_request_limit_exceeded', status: 429 };
-  if (k.limits.tokens_per_day != null && k.usage.tokens_today >= k.limits.tokens_per_day)
-    return { err: 'daily_token_limit_exceeded',   status: 429 };
-  if (k.limits.tokens_total != null && k.usage.tokens_total >= k.limits.tokens_total)
-    return { err: 'total_token_limit_exceeded',   status: 429 };
+  if (k.limits.requests_per_day != null && k.usage.requests_today >= k.limits.requests_per_day) return { err: 'daily_request_limit_exceeded', status: 429 };
+  if (k.limits.tokens_per_day   != null && k.usage.tokens_today   >= k.limits.tokens_per_day)   return { err: 'daily_token_limit_exceeded',   status: 429 };
+  if (k.limits.tokens_total     != null && k.usage.tokens_total   >= k.limits.tokens_total)     return { err: 'total_token_limit_exceeded',   status: 429 };
   await dbWrite(d);
   return { id: k.id };
 }
 
 async function keyRecordUsage(keyId, usage, model) {
+  const tok  = (usage?.prompt_tokens || 0) + (usage?.completion_tokens || 0);
+  const cost = calcCost(model, usage?.prompt_tokens, usage?.completion_tokens);
+  const now  = Date.now();
+  const today = todayStr();
+
+  if (USE_DB) {
+    await initDB();
+    await getSql()`
+      UPDATE api_keys SET
+        usage_req_today  = CASE WHEN last_reset=${today} THEN usage_req_today  + 1      ELSE 1      END,
+        usage_tok_today  = CASE WHEN last_reset=${today} THEN usage_tok_today  + ${tok}  ELSE ${tok}  END,
+        usage_cost_today = CASE WHEN last_reset=${today} THEN usage_cost_today + ${cost} ELSE ${cost} END,
+        last_reset       = ${today},
+        usage_req_total  = usage_req_total  + 1,
+        usage_tok_total  = usage_tok_total  + ${tok},
+        usage_cost_total = usage_cost_total + ${cost},
+        last_used        = ${now}
+      WHERE id = ${keyId}`;
+    return;
+  }
+
   const d = await dbRead();
   const k = d.keys.find(k => k.id === keyId);
   if (!k) return;
   resetDaily(k);
-  const tok  = (usage?.prompt_tokens || 0) + (usage?.completion_tokens || 0);
-  const cost = calcCost(model, usage?.prompt_tokens, usage?.completion_tokens);
   k.usage.requests_total++; k.usage.requests_today++;
-  k.usage.tokens_total  += tok;  k.usage.tokens_today  += tok;
-  k.usage.cost_total    += cost; k.usage.cost_today    += cost;
-  k.last_used = Date.now();
+  k.usage.tokens_total += tok; k.usage.tokens_today += tok;
+  k.usage.cost_total   += cost; k.usage.cost_today   += cost;
+  k.last_used = now;
   await dbWrite(d);
 }
 
 async function getStats() {
+  if (USE_DB) {
+    await initDB();
+    const today = todayStr();
+    const rows = await getSql()`
+      SELECT
+        COUNT(*)                                                              AS total_keys,
+        COUNT(*) FILTER (WHERE status = 'active')                            AS active_keys,
+        COALESCE(SUM(CASE WHEN last_reset=${today} THEN usage_req_today  ELSE 0 END), 0) AS requests_today,
+        COALESCE(SUM(CASE WHEN last_reset=${today} THEN usage_tok_today  ELSE 0 END), 0) AS tokens_today,
+        COALESCE(SUM(CASE WHEN last_reset=${today} THEN usage_cost_today ELSE 0 END), 0) AS cost_today
+      FROM api_keys`;
+    const r = rows[0];
+    return {
+      total_keys: Number(r.total_keys), active_keys: Number(r.active_keys),
+      requests_today: Number(r.requests_today), tokens_today: Number(r.tokens_today), cost_today: Number(r.cost_today),
+    };
+  }
+
   const d = await dbRead(); const t = todayStr();
   let active = 0, rToday = 0, tToday = 0, cToday = 0;
   for (const k of d.keys) {
     if (k.status === 'active') active++;
-    if (k.usage.last_reset === t) {
-      rToday += k.usage.requests_today;
-      tToday += k.usage.tokens_today;
-      cToday += (k.usage.cost_today || 0);
-    }
+    if (k.usage.last_reset === t) { rToday += k.usage.requests_today; tToday += k.usage.tokens_today; cToday += (k.usage.cost_today || 0); }
   }
   return { total_keys: d.keys.length, active_keys: active, requests_today: rToday, tokens_today: tToday, cost_today: cToday };
 }
@@ -279,7 +405,7 @@ app.get('/playground',  (req, res) => res.redirect('/chat'));
 
 // ── Admin API ─────────────────────────────────────────────────────────────────
 app.get('/api/admin/stats',       requireSession, async (req, res) => res.json(await getStats()));
-app.get('/api/admin/keys',        requireSession, async (req, res) => res.json((await dbRead()).keys));
+app.get('/api/admin/keys',        requireSession, async (req, res) => res.json(await keyList()));
 app.post('/api/admin/keys',       requireSession, async (req, res) => res.status(201).json(await keyCreate(req.body?.name, req.body?.limits)));
 app.patch('/api/admin/keys/:id',  requireSession, async (req, res) => {
   const k = await keyPatch(req.params.id, req.body);
@@ -296,8 +422,7 @@ app.get('/v1/models', (req, res) => res.json({ object: 'list', data: MODELS }));
 app.get('/v1/usage', async (req, res) => {
   const auth = await keyAuth(req.headers.authorization);
   if (auth.err) return res.status(auth.status).json({ error: { message: auth.err } });
-  const d = await dbRead();
-  const k = d.keys.find(k => k.id === auth.id);
+  const k = await keyById(auth.id);
   if (!k) return res.status(404).json({ error: { message: 'key_not_found' } });
   res.json({
     name: k.name, status: k.status,
@@ -343,7 +468,7 @@ if (require.main === module) {
     console.log(`  Docs       →  http://localhost:${PORT}/docs`);
     console.log(`  ─────────────────────────────────────────`);
     console.log(`  Password:  ${ADMIN_PASS}`);
-    if (USE_KV) console.log(`  Storage:   Vercel KV`);
+    if (USE_DB) console.log(`  Storage:   NeonDB (PostgreSQL)`);
     else        console.log(`  Storage:   ${DATA_FILE}`);
     console.log();
   });

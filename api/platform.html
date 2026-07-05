@@ -109,12 +109,14 @@ td { padding:14px 16px; vertical-align:middle; }
 /* ── Key row cells ── */
 .name-cell { display:flex; align-items:center; gap:10px; }
 .status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.status-dot.active  { background:var(--green); box-shadow:0 0 0 3px rgba(16,185,129,.15); }
-.status-dot.revoked { background:var(--muted2); }
+.status-dot.active   { background:var(--green); box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+.status-dot.revoked  { background:var(--muted2); }
+.status-dot.deleted  { background:var(--red); }
 .key-name-text { font-weight:600; font-size:14px; }
 .key-status-badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:.06em; flex-shrink:0; }
-.key-status-badge.active  { background:var(--green2);  color:var(--green); }
-.key-status-badge.revoked { background:var(--surf3);   color:var(--muted); }
+.key-status-badge.active   { background:var(--green2);  color:var(--green); }
+.key-status-badge.revoked  { background:var(--surf3);   color:var(--muted); }
+.key-status-badge.deleted  { background:var(--red2);    color:var(--red); }
 
 .key-code-cell { display:flex; align-items:center; gap:8px; }
 .key-code  { font-family:'SF Mono',Consolas,monospace; font-size:12px; color:var(--muted); letter-spacing:.03em; }
@@ -635,13 +637,15 @@ function renderKeys(keys) {
   }
   tb.innerHTML = keys.map(function(k) {
     var a = k.status === 'active';
+    var d = k.status === 'deleted';
     var b = bar(k.usage.requests_today, k.limits.requests_per_day);
+    var statusLabel = a ? 'Active' : (d ? 'Deleted' : 'Revoked');
     return '<tr>'
       +'<td><div class="name-cell">'
-        +'<span class="status-dot '+(a?'active':'revoked')+'"></span>'
+        +'<span class="status-dot '+k.status+'"></span>'
         +'<div>'
           +'<div class="key-name-text">'+esc(k.name)+'</div>'
-          +'<span class="key-status-badge '+(a?'active':'revoked')+'">'+(a?'Active':'Revoked')+'</span>'
+          +'<span class="key-status-badge '+k.status+'">'+statusLabel+'</span>'
         +'</div>'
       +'</div></td>'
       +'<td><div class="key-code-cell">'
@@ -662,8 +666,9 @@ function renderKeys(keys) {
       +'<td><div class="row-actions">'
         +(a?'<button class="act act-edit" onclick="openEdit(\''+k.id+'\')">Edit</button>':'')
         +(a?'<button class="act act-revoke" onclick="revokeKey(\''+k.id+'\',\''+esc(k.name)+'\')">Revoke</button>'
-            :'<button class="act act-restore" onclick="restoreKey(\''+k.id+'\')">Restore</button>')
-        +'<button class="act act-delete" onclick="deleteKey(\''+k.id+'\',\''+esc(k.name)+'\')">Delete</button>'
+            :(d?''
+                :'<button class="act act-restore" onclick="restoreKey(\''+k.id+'\')">Restore</button>'))
+        +(!d?'<button class="act act-delete" onclick="deleteKey(\''+k.id+'\',\''+esc(k.name)+'\')">Delete</button>':'')
       +'</div></td>'
     +'</tr>';
   }).join('');
@@ -677,10 +682,11 @@ function renderUsage(keys) {
     return;
   }
   tb.innerHTML = keys.map(function(k) {
-    var a = k.status === 'active';
+    var a = k.status === 'active'; var d = k.status === 'deleted';
+    var statusLabel = a ? 'Active' : (d ? 'Deleted' : 'Revoked');
     return '<tr>'
       +'<td><span class="key-name-text">'+esc(k.name)+'</span></td>'
-      +'<td><span class="key-status-badge '+(a?'active':'revoked')+'">'+(a?'Active':'Revoked')+'</span></td>'
+      +'<td><span class="key-status-badge '+k.status+'">'+statusLabel+'</span></td>'
       +'<td class="usg-num">'+fmt(k.usage.requests_today)+'</td>'
       +'<td class="usg-num">'+fmt(k.usage.tokens_today)+'</td>'
       +'<td class="cost-num">'+fmtCost(k.usage.cost_today)+'</td>'
