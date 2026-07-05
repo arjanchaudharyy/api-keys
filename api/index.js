@@ -87,6 +87,16 @@ async function initDB() {
     usage_cost_today DOUBLE PRECISION NOT NULL DEFAULT 0,
     last_reset       TEXT             NOT NULL DEFAULT ''
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS usage_logs (
+    id               SERIAL           PRIMARY KEY,
+    key_id           TEXT             NOT NULL,
+    key_name         TEXT             NOT NULL DEFAULT '',
+    model            TEXT             NOT NULL,
+    prompt_tokens    INTEGER          NOT NULL DEFAULT 0,
+    completion_tokens INTEGER         NOT NULL DEFAULT 0,
+    cost             DOUBLE PRECISION NOT NULL DEFAULT 0,
+    ts               BIGINT           NOT NULL
+  )`;
   _dbInited = true;
 }
 
@@ -275,17 +285,27 @@ async function keyRecordUsage(keyId, usage, model) {
 
   if (USE_DB) {
     await initDB();
-    await getSql()`
-      UPDATE api_keys SET
-        usage_req_today  = CASE WHEN last_reset=${today} THEN usage_req_today  + 1      ELSE 1      END,
-        usage_tok_today  = CASE WHEN last_reset=${today} THEN usage_tok_today  + ${tok}  ELSE ${tok}  END,
-        usage_cost_today = CASE WHEN last_reset=${today} THEN usage_cost_today + ${cost} ELSE ${cost} END,
-        last_reset       = ${today},
-        usage_req_total  = usage_req_total  + 1,
-        usage_tok_total  = usage_tok_total  + ${tok},
-        usage_cost_total = usage_cost_total + ${cost},
-        last_used        = ${now}
-      WHERE id = ${keyId}`;
+    const sql = getSql();
+    const keyRow = await sql`SELECT name FROM api_keys WHERE id=${keyId}`;
+    const keyName = keyRow[0]?.name || '';
+    const ptok = usage?.prompt_tokens || 0;
+    const ctok = usage?.completion_tokens || 0;
+    await Promise.all([
+      sql`
+        UPDATE api_keys SET
+          usage_req_today  = CASE WHEN last_reset=${today} THEN usage_req_today  + 1      ELSE 1      END,
+          usage_tok_today  = CASE WHEN last_reset=${today} THEN usage_tok_today  + ${tok}  ELSE ${tok}  END,
+          usage_cost_today = CASE WHEN last_reset=${today} THEN usage_cost_today + ${cost} ELSE ${cost} END,
+          last_reset       = ${today},
+          usage_req_total  = usage_req_total  + 1,
+          usage_tok_total  = usage_tok_total  + ${tok},
+          usage_cost_total = usage_cost_total + ${cost},
+          last_used        = ${now}
+        WHERE id = ${keyId}`,
+      sql`
+        INSERT INTO usage_logs (key_id, key_name, model, prompt_tokens, completion_tokens, cost, ts)
+        VALUES (${keyId}, ${keyName}, ${model}, ${ptok}, ${ctok}, ${cost}, ${now})`,
+    ]);
     return;
   }
 
@@ -414,6 +434,36 @@ app.patch('/api/admin/keys/:id',  requireSession, async (req, res) => {
 app.delete('/api/admin/keys/:id', requireSession, async (req, res) => {
   const ok = await keyDelete(req.params.id);
   res.status(ok ? 200 : 404).json({ ok });
+});
+
+app.get('/api/admin/model-stats', requireSession, async (req, res) => {
+  if (!USE_DB) return res.json([]);
+  await initDB();
+  const rows = await getSql()`
+    SELECT model,
+           COUNT(*)                              AS requests,
+           SUM(prompt_tokens + completion_tokens) AS tokens,
+           SUM(cost)                             AS cost
+    FROM usage_logs
+    GROUP BY model
+    ORDER BY cost DESC`;
+  res.json(rows.map(r => ({ model: r.model, requests: Number(r.requests), tokens: Number(r.tokens), cost: Number(r.cost) })));
+});
+
+app.get('/api/admin/logs', requireSession, async (req, res) => {
+  if (!USE_DB) return res.json([]);
+  await initDB();
+  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  const rows = await getSql()`
+    SELECT id, key_id, key_name, model, prompt_tokens, completion_tokens, cost, ts
+    FROM usage_logs
+    ORDER BY ts DESC
+    LIMIT ${limit}`;
+  res.json(rows.map(r => ({
+    id: Number(r.id), key_id: r.key_id, key_name: r.key_name, model: r.model,
+    prompt_tokens: Number(r.prompt_tokens), completion_tokens: Number(r.completion_tokens),
+    cost: Number(r.cost), ts: Number(r.ts),
+  })));
 });
 
 // ── OpenAI-compatible API ──────────────────────────────────────────────────────
