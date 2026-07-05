@@ -4,7 +4,7 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": ["api/platform.html", "api/docs.html"] }
+      "config": { "includeFiles": ["api/platform.html", "api/docs.html", "api/chat.html"] }
     }
   ],
   "routes": [
