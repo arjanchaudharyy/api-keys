@@ -8,7 +8,9 @@ const https   = require('https');
 const PORT        = Number(process.env.PORT) || 4321;
 const ADMIN_PASS  = process.env.ADMIN_PASSWORD || 'api@dumbfuck123';
 const SESSION_KEY = process.env.SESSION_SECRET || ADMIN_PASS + ':session_v1';
-const DATA_FILE   = path.join(process.cwd(), 'data.json');
+const DATA_FILE   = process.env.VERCEL
+  ? '/tmp/meshapi-data.json'
+  : path.join(process.cwd(), 'data.json');
 const HTML_DIR    = __dirname;
 const USE_KV      = !!(process.env.KV_REST_API_URL);
 const DEMO_HOST   = 'gids.meshapi.ai';
