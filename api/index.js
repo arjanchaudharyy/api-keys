@@ -271,9 +271,11 @@ app.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Dashboard + Docs ──────────────────────────────────────────────────────────
-app.get('/',      requireSession, (req, res) => sendFile(res, 'platform.html'));
-app.get('/docs',  (req, res) => sendFile(res, 'docs.html'));
+// ── Dashboard + Docs + Playground ────────────────────────────────────────────
+app.get('/',            requireSession, (req, res) => sendFile(res, 'platform.html'));
+app.get('/docs',        (req, res) => sendFile(res, 'docs.html'));
+app.get('/chat',        (req, res) => sendFile(res, 'chat.html'));
+app.get('/playground',  (req, res) => res.redirect('/chat'));
 
 // ── Admin API ─────────────────────────────────────────────────────────────────
 app.get('/api/admin/stats',       requireSession, async (req, res) => res.json(await getStats()));

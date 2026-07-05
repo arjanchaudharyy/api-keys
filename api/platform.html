@@ -178,6 +178,26 @@ td { padding:14px 16px; vertical-align:middle; }
 .copy-btn-lg { background:var(--surf2); border:1px solid var(--bdr); border-radius:7px; color:var(--muted); font-size:12px; padding:7px 14px; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; transition:all .12s; }
 .copy-btn-lg:hover { color:var(--text); border-color:var(--bdr2); }
 .copy-btn-lg.ok { color:var(--green); border-color:rgba(16,185,129,.3); background:var(--green2); }
+
+/* ── Toast ── */
+.toast-wrap { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+.toast { display:flex; align-items:center; gap:10px; background:var(--surf); border:1px solid var(--bdr2); border-radius:10px; padding:11px 16px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.4); transform:translateX(120%); transition:transform .25s cubic-bezier(.34,1.56,.64,1); pointer-events:all; max-width:320px; }
+.toast.show { transform:translateX(0); }
+.toast svg { width:16px; height:16px; flex-shrink:0; }
+.toast.ok   { border-color:rgba(16,185,129,.3); }
+.toast.ok svg { color:var(--green); }
+.toast.err  { border-color:rgba(244,63,94,.3); }
+.toast.err svg { color:var(--red); }
+.toast.info { border-color:rgba(59,130,246,.3); }
+.toast.info svg { color:var(--blue); }
+
+/* ── Confirm dialog ── */
+.confirm-overlay { position:fixed; inset:0; background:rgba(4,8,16,.7); z-index:300; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:opacity .15s; }
+.confirm-overlay.open { opacity:1; pointer-events:all; }
+.confirm-box { background:var(--surf); border:1px solid var(--bdr2); border-radius:12px; padding:24px; width:340px; box-shadow:0 20px 50px rgba(0,0,0,.5); }
+.confirm-ttl { font-size:16px; font-weight:700; margin-bottom:8px; }
+.confirm-msg { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
+.confirm-btns { display:flex; gap:10px; justify-content:flex-end; }
 </style>
 </head>
 <body>
@@ -206,7 +226,11 @@ td { padding:14px 16px; vertical-align:middle; }
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185ZM9.75 9h.008v.008H9.75V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm4.125 4.5h.008v.008h-.008V13.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
       Model Pricing
     </button>
-    <div class="s-group">Resources</div>
+    <div class="s-group">Tools</div>
+    <a class="s-link" href="/chat" target="_blank">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg>
+      Playground ↗
+    </a>
     <a class="s-link" href="/docs" target="_blank">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
       Documentation ↗
@@ -469,9 +493,25 @@ td { padding:14px 16px; vertical-align:middle; }
   </div>
 </div>
 
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-ttl" id="confirmTtl"></div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="btn-ghost" onclick="confirmResolve(false)">Cancel</button>
+      <button class="btn-primary" id="confirmOkBtn" onclick="confirmResolve(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var keysData = [];
 var revealKey = '';
+var _confirmResolve = null;
 
 // Pricing table (matches server)
 var PRICING = {
@@ -688,23 +728,6 @@ function openCreate() {
   setTimeout(function(){ document.getElementById('cName').focus(); }, 50);
 }
 function closeCreate() { document.getElementById('createModal').classList.remove('open'); }
-async function doCreate() {
-  var name = document.getElementById('cName').value.trim() || 'Unnamed Key';
-  var lim  = {
-    requests_per_day: parseInt(document.getElementById('cReqDay').value)   || null,
-    tokens_per_day:   parseInt(document.getElementById('cTokDay').value)   || null,
-    tokens_total:     parseInt(document.getElementById('cTokTotal').value) || null,
-  };
-  var key = await api('POST', '/api/admin/keys', { name: name, limits: lim });
-  closeCreate();
-  revealKey = key.key;
-  document.getElementById('revealVal').textContent = key.key;
-  var b = document.getElementById('revealCopyBtn');
-  b.textContent = 'Copy'; b.classList.remove('ok');
-  document.getElementById('revealModal').classList.add('open');
-  load();
-}
-
 // ── Reveal ────────────────────────────────────────────────────────────────────
 function closeReveal() { document.getElementById('revealModal').classList.remove('open'); }
 function copyReveal() {
@@ -727,8 +750,92 @@ function openEdit(id) {
   setTimeout(function(){ document.getElementById('eName').focus(); }, 50);
 }
 function closeEdit() { document.getElementById('editModal').classList.remove('open'); }
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type) {
+  type = type || 'ok';
+  var icons = {
+    ok:   '<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>',
+    err:  '<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>',
+    info: '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>',
+  };
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = icons[type] + '<span>' + msg + '</span>';
+  document.getElementById('toastWrap').appendChild(el);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('show'); }); });
+  setTimeout(function(){
+    el.classList.remove('show');
+    setTimeout(function(){ el.remove(); }, 300);
+  }, 3000);
+}
+
+// ── Confirm dialog ────────────────────────────────────────────────────────────
+function confirmDialog(title, msg, okLabel, danger) {
+  return new Promise(function(resolve) {
+    _confirmResolve = resolve;
+    document.getElementById('confirmTtl').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    var btn = document.getElementById('confirmOkBtn');
+    btn.textContent = okLabel || 'Confirm';
+    btn.style.background = danger ? 'var(--red)' : '';
+    document.getElementById('confirmOverlay').classList.add('open');
+  });
+}
+function confirmResolve(val) {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(val); _confirmResolve = null; }
+}
+document.getElementById('confirmOverlay').addEventListener('click', function(e){ if(e.target===this) confirmResolve(false); });
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function copyKey(key, btn) {
+  navigator.clipboard.writeText(key).then(function() {
+    btn.style.color = 'var(--green)';
+    setTimeout(function(){ btn.style.color = ''; }, 1500);
+    toast('Key copied to clipboard');
+  });
+}
+async function revokeKey(id, name) {
+  var ok = await confirmDialog('Revoke "'+name+'"?', 'This key will stop working immediately. You can restore it later.', 'Revoke', true);
+  if (!ok) return;
+  await api('PATCH', '/api/admin/keys/'+id, { status:'revoked' });
+  toast('"'+name+'" revoked', 'info');
+  load();
+}
+async function restoreKey(id) {
+  var k = keysData.find(function(k){ return k.id===id; });
+  await api('PATCH', '/api/admin/keys/'+id, { status:'active' });
+  toast('"'+(k?k.name:'Key')+'" restored', 'ok');
+  load();
+}
+async function deleteKey(id, name) {
+  var ok = await confirmDialog('Delete "'+name+'"?', 'This will permanently delete the key and all usage data. This cannot be undone.', 'Delete', true);
+  if (!ok) return;
+  await api('DELETE', '/api/admin/keys/'+id);
+  toast('"'+name+'" deleted', 'info');
+  load();
+}
+async function doCreate() {
+  var name = document.getElementById('cName').value.trim() || 'Unnamed Key';
+  var lim  = {
+    requests_per_day: parseInt(document.getElementById('cReqDay').value)   || null,
+    tokens_per_day:   parseInt(document.getElementById('cTokDay').value)   || null,
+    tokens_total:     parseInt(document.getElementById('cTokTotal').value) || null,
+  };
+  var key = await api('POST', '/api/admin/keys', { name: name, limits: lim });
+  closeCreate();
+  revealKey = key.key;
+  document.getElementById('revealVal').textContent = key.key;
+  var b = document.getElementById('revealCopyBtn');
+  b.textContent = 'Copy'; b.classList.remove('ok');
+  document.getElementById('revealModal').classList.add('open');
+  toast('"'+name+'" created successfully');
+  load();
+}
 async function doEdit() {
   var id = document.getElementById('eId').value;
+  var k = keysData.find(function(k){ return k.id===id; });
   await api('PATCH', '/api/admin/keys/'+id, {
     name:   document.getElementById('eName').value.trim(),
     limits: {
@@ -737,26 +844,8 @@ async function doEdit() {
       tokens_total:     parseInt(document.getElementById('eTokTotal').value) || null,
     }
   });
+  toast('Changes saved');
   closeEdit(); load();
-}
-
-// ── Actions ───────────────────────────────────────────────────────────────────
-function copyKey(key, btn) {
-  navigator.clipboard.writeText(key).then(function() {
-    btn.style.color = 'var(--green)';
-    setTimeout(function(){ btn.style.color = ''; }, 1500);
-  });
-}
-async function revokeKey(id, name) {
-  if (!confirm('Revoke "'+name+'"?\n\nThis key will stop working immediately. You can restore it later.')) return;
-  await api('PATCH', '/api/admin/keys/'+id, { status:'revoked' }); load();
-}
-async function restoreKey(id) {
-  await api('PATCH', '/api/admin/keys/'+id, { status:'active' }); load();
-}
-async function deleteKey(id, name) {
-  if (!confirm('Permanently delete "'+name+'"?\n\nThis will delete all usage data and cannot be undone.')) return;
-  await api('DELETE', '/api/admin/keys/'+id); load();
 }
 async function logout() { await api('POST', '/api/logout'); window.location='/login'; }
 

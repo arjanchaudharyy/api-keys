@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MeshAPI Playground</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:     #07101c;
+  --surf:   #0d1b2a;
+  --surf2:  #13253a;
+  --surf3:  #1a3050;
+  --bdr:    #1e3350;
+  --bdr2:   #2a4060;
+  --text:   #dce8f8;
+  --muted:  #5a7499;
+  --muted2: #3d5a7a;
+  --accent: #f97316;
+  --green:  #10b981;
+  --blue:   #3b82f6;
+  --red:    #f43f5e;
+  --yellow: #f59e0b;
+  --purple: #8b5cf6;
+}
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system,'Segoe UI',system-ui,sans-serif; font-size: 14px; display: flex; flex-direction: column; }
+
+/* ── Top bar ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 52px; flex-shrink: 0;
+  background: var(--surf); border-bottom: 1px solid var(--bdr);
+  gap: 12px;
+}
+.tb-left  { display: flex; align-items: center; gap: 14px; }
+.tb-right { display: flex; align-items: center; gap: 10px; }
+.logo { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+.logo-mark { width: 28px; height: 28px; background: linear-gradient(135deg,#f97316,#ea580c); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: #fff; }
+.logo-name { font-size: 15px; font-weight: 800; letter-spacing: -.03em; color: var(--text); }
+.logo-name b { color: var(--accent); }
+.tb-divider { width: 1px; height: 20px; background: var(--bdr); }
+.tb-title { font-size: 14px; font-weight: 600; color: var(--muted); }
+.tb-link { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 7px; transition: all .12s; }
+.tb-link:hover { background: var(--surf2); color: var(--text); }
+.tb-link svg { width: 14px; height: 14px; }
+
+/* ── Config strip ── */
+.config-strip {
+  display: flex; align-items: stretch; gap: 0;
+  border-bottom: 1px solid var(--bdr); flex-shrink: 0;
+  background: var(--surf);
+}
+.cfg-section {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-right: 1px solid var(--bdr);
+}
+.cfg-section:last-child { border-right: none; flex: 1; }
+.cfg-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted2); white-space: nowrap; }
+
+/* Model selector */
+.model-select-wrap { position: relative; }
+.model-trigger {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surf2); border: 1px solid var(--bdr); border-radius: 8px;
+  padding: 7px 12px; cursor: pointer; min-width: 260px;
+  transition: border-color .12s;
+}
+.model-trigger:hover { border-color: var(--bdr2); }
+.model-trigger.open { border-color: var(--blue); }
+.mt-provider { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+.mt-name { font-size: 13px; font-weight: 500; flex: 1; font-family: 'SF Mono',Consolas,monospace; }
+.mt-price { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.mt-arrow { color: var(--muted); flex-shrink: 0; }
+.mt-arrow svg { width: 12px; height: 12px; transition: transform .15s; }
+.model-trigger.open .mt-arrow svg { transform: rotate(180deg); }
+
+.model-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 200;
+  background: var(--surf); border: 1px solid var(--bdr2); border-radius: 10px;
+  width: 340px; max-height: 380px; overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  display: none;
+}
+.model-dropdown.open { display: block; }
+.model-dropdown::-webkit-scrollbar { width: 3px; }
+.model-dropdown::-webkit-scrollbar-thumb { background: var(--surf3); border-radius: 2px; }
+.md-group { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted2); padding: 10px 14px 5px; }
+.md-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; cursor: pointer; transition: background .1s;
+}
+.md-item:hover { background: var(--surf2); }
+.md-item.selected { background: rgba(249,115,22,.08); }
+.md-item-id { font-family: 'SF Mono',Consolas,monospace; font-size: 12px; color: var(--text); flex: 1; }
+.md-item-price { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.prov-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 2px 5px; border-radius: 3px; flex-shrink: 0; }
+.pb-anthropic { background: rgba(251,146,60,.12); color: #fb923c; }
+.pb-openai    { background: rgba(96,165,250,.12);  color: #60a5fa; }
+.pb-google    { background: rgba(134,239,172,.12); color: #86efac; }
+
+/* API Key input */
+.key-row { display: flex; align-items: center; gap: 8px; flex: 1; }
+.key-input-wrap { position: relative; flex: 1; max-width: 340px; }
+.key-input {
+  width: 100%; background: var(--surf2); border: 1px solid var(--bdr);
+  border-radius: 8px; color: var(--text); font-family: 'SF Mono',Consolas,monospace;
+  font-size: 12px; padding: 8px 36px 8px 12px; outline: none;
+  transition: border-color .12s;
+}
+.key-input:focus { border-color: var(--blue); }
+.key-input.valid { border-color: rgba(16,185,129,.5); }
+.key-input.invalid { border-color: rgba(244,63,94,.5); }
+.key-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted2); cursor: pointer; padding: 2px; }
+.key-eye:hover { color: var(--muted); }
+.key-eye svg { width: 14px; height: 14px; }
+.key-verify-btn {
+  background: var(--surf2); border: 1px solid var(--bdr); border-radius: 8px;
+  color: var(--muted); font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 7px 14px; cursor: pointer; white-space: nowrap; transition: all .12s;
+}
+.key-verify-btn:hover { border-color: var(--bdr2); color: var(--text); }
+.key-status { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+.key-status.ok  { color: var(--green); }
+.key-status.err { color: var(--red); }
+.key-status svg { width: 14px; height: 14px; }
+
+/* Settings */
+.cfg-setting { display: flex; align-items: center; gap: 8px; }
+.cfg-num { display: flex; align-items: center; gap: 6px; }
+.cfg-num label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted2); white-space: nowrap; }
+.cfg-num input[type=range] { width: 80px; accent-color: var(--accent); }
+.cfg-num span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 28px; }
+.cfg-num input[type=number] { width: 72px; background: var(--surf2); border: 1px solid var(--bdr); border-radius: 6px; color: var(--text); font-size: 12px; padding: 5px 8px; outline: none; font-family: inherit; }
+.cfg-num input[type=number]:focus { border-color: var(--blue); }
+
+/* ── Chat area ── */
+.chat-area { flex: 1; overflow-y: auto; padding: 24px 0; scroll-behavior: smooth; }
+.chat-area::-webkit-scrollbar { width: 4px; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--surf3); border-radius: 2px; }
+.chat-inner { max-width: 800px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 20px; }
+
+/* Empty state */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 80px 24px; text-align: center; }
+.empty-icon { width: 56px; height: 56px; background: var(--surf2); border: 1px solid var(--bdr); border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+.empty-icon svg { width: 24px; height: 24px; color: var(--muted); }
+.empty-ttl { font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.empty-sub { font-size: 14px; color: var(--muted); max-width: 400px; line-height: 1.6; }
+.empty-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
+.empty-chip { background: var(--surf2); border: 1px solid var(--bdr); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--muted); cursor: pointer; transition: all .12s; }
+.empty-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(249,115,22,.05); }
+
+/* Messages */
+.msg { display: flex; flex-direction: column; gap: 6px; animation: msgIn .2s ease; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.msg-user .msg-bubble {
+  align-self: flex-end; background: var(--accent); color: #fff;
+  border-radius: 16px 16px 4px 16px; padding: 11px 16px;
+  max-width: 72%; font-size: 14px; line-height: 1.65; word-break: break-word;
+}
+.msg-assistant .msg-header { display: flex; align-items: center; gap: 8px; }
+.msg-model-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .05em; }
+.msg-meta { font-size: 11px; color: var(--muted); }
+.msg-assistant .msg-bubble {
+  background: var(--surf); border: 1px solid var(--bdr);
+  border-radius: 4px 16px 16px 16px; padding: 14px 18px;
+  max-width: 100%; font-size: 14px; line-height: 1.75; word-break: break-word;
+}
+.msg-bubble code { font-family: 'SF Mono',Consolas,monospace; font-size: 12px; background: var(--surf2); border: 1px solid var(--bdr); padding: 1px 5px; border-radius: 4px; color: #86efac; }
+.msg-bubble pre { background: var(--surf2); border: 1px solid var(--bdr); border-radius: 8px; padding: 14px 16px; margin: 10px 0; overflow-x: auto; }
+.msg-bubble pre code { background: none; border: none; padding: 0; }
+.cursor { display: inline-block; width: 2px; height: 1em; background: var(--text); vertical-align: text-bottom; animation: blink .7s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.msg-footer { display: flex; align-items: center; gap: 10px; }
+.msg-cost-tag { display: flex; align-items: center; gap: 5px; font-size: 11px; background: var(--surf2); border: 1px solid var(--bdr); padding: 2px 8px; border-radius: 4px; color: var(--muted); }
+.msg-cost-tag .cost-val { color: var(--green); font-weight: 600; }
+
+/* ── Input bar ── */
+.input-bar {
+  flex-shrink: 0; padding: 14px 16px;
+  background: var(--surf); border-top: 1px solid var(--bdr);
+}
+.input-inner { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.input-row { display: flex; gap: 10px; align-items: flex-end; }
+.msg-textarea {
+  flex: 1; background: var(--surf2); border: 1px solid var(--bdr);
+  border-radius: 12px; color: var(--text); font-family: inherit;
+  font-size: 14px; padding: 12px 16px; outline: none; resize: none;
+  min-height: 48px; max-height: 200px; line-height: 1.6;
+  transition: border-color .12s;
+}
+.msg-textarea:focus { border-color: var(--blue); }
+.msg-textarea::placeholder { color: var(--muted2); }
+.send-btn {
+  width: 44px; height: 44px; background: var(--accent); border: none;
+  border-radius: 10px; color: #fff; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all .12s;
+}
+.send-btn:hover:not(:disabled) { background: #ea6a0a; transform: scale(1.05); }
+.send-btn:disabled { background: var(--surf3); cursor: not-allowed; }
+.send-btn svg { width: 18px; height: 18px; }
+.send-btn.loading svg { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.input-hints { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hint-left { display: flex; align-items: center; gap: 8px; }
+.kbd { background: var(--surf3); border: 1px solid var(--bdr2); border-radius: 4px; font-size: 10px; font-family: 'SF Mono',Consolas,monospace; color: var(--muted); padding: 1px 5px; white-space: nowrap; }
+.hint-right { display: flex; gap: 8px; }
+.hint-btn { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; display: flex; align-items: center; gap: 5px; transition: all .12s; }
+.hint-btn:hover { background: var(--surf2); color: var(--text); }
+.hint-btn svg { width: 13px; height: 13px; }
+
+/* Sysprompt toggle */
+.sysprompt-row { display: none; }
+.sysprompt-row.open { display: flex; }
+.sysprompt-ta {
+  flex: 1; background: var(--bg); border: 1px solid var(--bdr);
+  border-radius: 8px; color: var(--muted); font-family: inherit;
+  font-size: 13px; padding: 10px 14px; outline: none; resize: none;
+  min-height: 56px; max-height: 120px; line-height: 1.6;
+}
+.sysprompt-ta:focus { border-color: var(--bdr2); color: var(--text); }
+.sysprompt-ta::placeholder { color: var(--muted2); }
+
+/* Responsive */
+@media(max-width:700px){
+  .config-strip { flex-wrap: wrap; }
+  .cfg-section { flex-wrap: wrap; }
+  .model-trigger { min-width: 200px; }
+  .cfg-setting { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="tb-left">
+    <a class="logo" href="/">
+      <div class="logo-mark">M</div>
+      <div class="logo-name">Mesh<b>API</b></div>
+    </a>
+    <div class="tb-divider"></div>
+    <span class="tb-title">Playground</span>
+  </div>
+  <div class="tb-right">
+    <a class="tb-link" href="/docs">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+      Docs
+    </a>
+    <a class="tb-link" href="/">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
+      Dashboard
+    </a>
+  </div>
+</div>
+
+<!-- ── Config strip ────────────────────────────────────────────────────────── -->
+<div class="config-strip">
+  <div class="cfg-section">
+    <span class="cfg-lbl">Model</span>
+    <div class="model-select-wrap" id="modelWrap">
+      <div class="model-trigger" id="modelTrigger" onclick="toggleModelDrop()">
+        <span class="mt-provider prov-badge pb-anthropic" id="triggerProv">Anthropic</span>
+        <span class="mt-name" id="triggerName">anthropic/claude-sonnet-5</span>
+        <span class="mt-price" id="triggerPrice">$3 / $15 per 1M</span>
+        <span class="mt-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg></span>
+      </div>
+      <div class="model-dropdown" id="modelDrop"></div>
+    </div>
+  </div>
+
+  <div class="cfg-section" style="flex:1">
+    <span class="cfg-lbl">API Key</span>
+    <div class="key-row">
+      <div class="key-input-wrap">
+        <input type="password" class="key-input" id="keyInput" placeholder="sk-mesh-your-key" autocomplete="off" oninput="onKeyInput()"/>
+        <button class="key-eye" onclick="toggleKeyVis()" id="keyEyeBtn" title="Show/hide key">
+          <svg id="eyeShow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+          <svg id="eyeHide" style="display:none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>
+        </button>
+      </div>
+      <button class="key-verify-btn" onclick="verifyKey()">Verify</button>
+      <div class="key-status" id="keyStatus"></div>
+    </div>
+  </div>
+
+  <div class="cfg-section cfg-setting">
+    <span class="cfg-lbl">Temp</span>
+    <div class="cfg-num">
+      <input type="range" min="0" max="2" step="0.1" value="1" id="tempRange" oninput="document.getElementById('tempVal').textContent=parseFloat(this.value).toFixed(1)"/>
+      <span id="tempVal">1.0</span>
+    </div>
+  </div>
+
+  <div class="cfg-section cfg-setting">
+    <span class="cfg-lbl">Max tokens</span>
+    <div class="cfg-num">
+      <input type="number" id="maxTok" value="2048" min="1" max="8192" step="256"/>
+    </div>
+  </div>
+</div>
+
+<!-- ── Chat area ───────────────────────────────────────────────────────────── -->
+<div class="chat-area" id="chatArea">
+  <div class="chat-inner" id="chatInner">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg>
+      </div>
+      <div class="empty-ttl">MeshAPI Playground</div>
+      <div class="empty-sub">Select a model, enter your API key, and start chatting. All 25+ models are free.</div>
+      <div class="empty-chips" id="exampleChips">
+        <div class="empty-chip" onclick="usePrompt(this)">Explain quantum entanglement simply</div>
+        <div class="empty-chip" onclick="usePrompt(this)">Write a Python function to merge two sorted lists</div>
+        <div class="empty-chip" onclick="usePrompt(this)">What's the best way to learn a new language?</div>
+        <div class="empty-chip" onclick="usePrompt(this)">Write a haiku about programming</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Input bar ───────────────────────────────────────────────────────────── -->
+<div class="input-bar">
+  <div class="input-inner">
+    <div class="sysprompt-row" id="syspromptRow">
+      <textarea class="sysprompt-ta" id="syspromptInput" placeholder="System prompt (e.g. You are a helpful coding assistant…)" rows="2"></textarea>
+    </div>
+    <div class="input-row">
+      <textarea class="msg-textarea" id="msgInput" placeholder="Message…" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
+      </button>
+    </div>
+    <div class="input-hints">
+      <div class="hint-left">
+        <span class="kbd">Enter</span><span style="font-size:11px;color:var(--muted)">send</span>
+        <span class="kbd">Shift+Enter</span><span style="font-size:11px;color:var(--muted)">new line</span>
+      </div>
+      <div class="hint-right">
+        <button class="hint-btn" onclick="toggleSysprompt()">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+          System prompt
+        </button>
+        <button class="hint-btn" onclick="clearChat()">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var selectedModel = 'anthropic/claude-sonnet-5';
+var conversation  = [];
+var isStreaming   = false;
+
+var MODELS = {
+  'Anthropic': [
+    { id:'anthropic/claude-fable-5',       price:'$15/$75' },
+    { id:'anthropic/claude-sonnet-5',      price:'$3/$15'  },
+    { id:'anthropic/claude-opus-4.8',      price:'$15/$75' },
+    { id:'anthropic/claude-opus-4.8-fast', price:'$15/$75' },
+    { id:'anthropic/claude-opus-4.7',      price:'$15/$60' },
+    { id:'anthropic/claude-haiku-4.5',     price:'$0.8/$4' },
+    { id:'anthropic/claude-3-haiku',       price:'$0.25/$1.25' },
+  ],
+  'OpenAI': [
+    { id:'openai/gpt-4o',                  price:'$2.5/$10' },
+    { id:'openai/gpt-4.1',                 price:'$2/$8'    },
+    { id:'openai/gpt-4.1-mini',            price:'$0.4/$1.6'},
+    { id:'openai/gpt-4.1-nano',            price:'$0.1/$0.4'},
+    { id:'openai/gpt-4o-mini',             price:'$0.15/$0.6'},
+    { id:'openai/o4-mini',                 price:'$1.1/$4.4'},
+    { id:'openai/gpt-3.5-turbo',           price:'$0.5/$1.5'},
+  ],
+  'Google': [
+    { id:'google/gemini-3.1-pro',          price:'$1.25/$5' },
+    { id:'google/gemini-2.5-pro',          price:'$1.25/$10'},
+    { id:'google/gemini-2.5-flash',        price:'$0.3/$1'  },
+    { id:'google/gemini-2.5-flash-lite',   price:'$0.1/$0.4'},
+  ],
+};
+
+var PROV_CLASS = { Anthropic:'pb-anthropic', OpenAI:'pb-openai', Google:'pb-google' };
+
+// ── Build model dropdown ──────────────────────────────────────────────────────
+(function buildDrop() {
+  var drop = document.getElementById('modelDrop');
+  var html = '';
+  Object.keys(MODELS).forEach(function(prov) {
+    html += '<div class="md-group">' + prov + '</div>';
+    MODELS[prov].forEach(function(m) {
+      html += '<div class="md-item' + (m.id === selectedModel ? ' selected' : '') + '" onclick="selectModel(\'' + m.id + '\',\'' + prov + '\',\'' + m.price + '\')" data-id="' + m.id + '">'
+        + '<span class="prov-badge ' + PROV_CLASS[prov] + '">' + prov.slice(0,3) + '</span>'
+        + '<span class="md-item-id">' + m.id + '</span>'
+        + '<span class="md-item-price">' + m.price + '/1M</span>'
+        + '</div>';
+    });
+  });
+  drop.innerHTML = html;
+})();
+
+function toggleModelDrop() {
+  var t = document.getElementById('modelTrigger');
+  var d = document.getElementById('modelDrop');
+  t.classList.toggle('open');
+  d.classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('modelWrap').contains(e.target)) {
+    document.getElementById('modelTrigger').classList.remove('open');
+    document.getElementById('modelDrop').classList.remove('open');
+  }
+});
+function selectModel(id, prov, price) {
+  selectedModel = id;
+  document.getElementById('triggerProv').textContent = prov;
+  document.getElementById('triggerProv').className = 'mt-provider prov-badge ' + PROV_CLASS[prov];
+  document.getElementById('triggerName').textContent = id;
+  document.getElementById('triggerPrice').textContent = price + ' per 1M';
+  document.querySelectorAll('.md-item').forEach(function(el) {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  document.getElementById('modelTrigger').classList.remove('open');
+  document.getElementById('modelDrop').classList.remove('open');
+}
+
+// ── Key management ────────────────────────────────────────────────────────────
+function onKeyInput() {
+  var inp = document.getElementById('keyInput');
+  inp.classList.remove('valid','invalid');
+  document.getElementById('keyStatus').innerHTML = '';
+}
+function toggleKeyVis() {
+  var inp = document.getElementById('keyInput');
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  document.getElementById('eyeShow').style.display = show ? 'none' : '';
+  document.getElementById('eyeHide').style.display = show ? ''     : 'none';
+}
+async function verifyKey() {
+  var key = document.getElementById('keyInput').value.trim();
+  var st  = document.getElementById('keyStatus');
+  var inp = document.getElementById('keyInput');
+  if (!key) { st.className='key-status err'; st.innerHTML='<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>Enter a key'; return; }
+  st.className='key-status'; st.innerHTML='<span style="color:var(--muted)">Checking…</span>';
+  try {
+    var r = await fetch('/v1/usage', { headers: { Authorization: 'Bearer ' + key } });
+    var d = await r.json();
+    if (r.ok) {
+      inp.classList.add('valid');
+      st.className='key-status ok';
+      st.innerHTML='<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>'+(d.key_name||'Valid key');
+    } else {
+      inp.classList.add('invalid');
+      st.className='key-status err';
+      st.innerHTML='<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'+(d.error||'Invalid');
+    }
+  } catch {
+    st.className='key-status err'; st.innerHTML='Network error';
+  }
+}
+
+// ── Textarea ──────────────────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function usePrompt(el) {
+  var ta = document.getElementById('msgInput');
+  ta.value = el.textContent;
+  autoResize(ta);
+  ta.focus();
+}
+function toggleSysprompt() {
+  document.getElementById('syspromptRow').classList.toggle('open');
+}
+function clearChat() {
+  conversation = [];
+  var inner = document.getElementById('chatInner');
+  inner.innerHTML = document.getElementById('emptyState') ? inner.innerHTML : '';
+  // rebuild empty state
+  inner.innerHTML = '<div class="empty-state" id="emptyState">'
+    + '<div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg></div>'
+    + '<div class="empty-ttl">MeshAPI Playground</div>'
+    + '<div class="empty-sub">Select a model, enter your API key, and start chatting.</div>'
+    + '<div class="empty-chips">'
+    + '<div class="empty-chip" onclick="usePrompt(this)">Explain quantum entanglement simply</div>'
+    + '<div class="empty-chip" onclick="usePrompt(this)">Write a Python function to merge two sorted lists</div>'
+    + '<div class="empty-chip" onclick="usePrompt(this)">What\'s the best way to learn a new language?</div>'
+    + '<div class="empty-chip" onclick="usePrompt(this)">Write a haiku about programming</div>'
+    + '</div></div>';
+}
+
+// ── Markdown-lite renderer ────────────────────────────────────────────────────
+function renderMarkdown(text) {
+  var h = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // code blocks
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, function(_,lang,code){ return '<pre><code>' + code.trim() + '</code></pre>'; })
+    // inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // bold
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // italic
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    // headers
+    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^# (.+)$/gm, '<strong>$1</strong>')
+    // newlines
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br/>');
+  return '<p>' + h + '</p>';
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMessage() {
+  if (isStreaming) return;
+  var text = document.getElementById('msgInput').value.trim();
+  if (!text) return;
+  var key  = document.getElementById('keyInput').value.trim();
+  if (!key) { flashInput(document.getElementById('keyInput'), 'Need an API key'); return; }
+
+  // Remove empty state
+  var empty = document.getElementById('emptyState');
+  if (empty) empty.remove();
+
+  // Add user message
+  conversation.push({ role:'user', content: text });
+  appendUserMsg(text);
+  document.getElementById('msgInput').value = '';
+  document.getElementById('msgInput').style.height = 'auto';
+
+  // System prompt
+  var sys = document.getElementById('syspromptInput').value.trim();
+  var msgs = sys ? [{ role:'system', content: sys }].concat(conversation) : conversation.slice();
+
+  // Start streaming
+  isStreaming = true;
+  setSendLoading(true);
+  var assistantDiv = appendAssistantMsg('', selectedModel);
+  var contentEl = assistantDiv.querySelector('.msg-bubble');
+  var footerEl  = assistantDiv.querySelector('.msg-footer');
+
+  var fullText = '';
+  var promptTok = 0, completionTok = 0;
+
+  try {
+    var response = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: msgs,
+        stream: true,
+        max_tokens: parseInt(document.getElementById('maxTok').value) || 2048,
+        temperature: parseFloat(document.getElementById('tempRange').value)
+      })
+    });
+
+    if (!response.ok) {
+      var err = await response.json().catch(function(){ return {error:{message:'Request failed'}}; });
+      var msg = (err.error && err.error.message) ? err.error.message : ('HTTP ' + response.status);
+      contentEl.innerHTML = '<span style="color:var(--red)">Error: ' + esc(msg) + '</span>';
+      isStreaming = false; setSendLoading(false); return;
+    }
+
+    var reader  = response.body.getReader();
+    var decoder = new TextDecoder();
+    var buf     = '';
+
+    while (true) {
+      var res = await reader.read();
+      if (res.done) break;
+      buf += decoder.decode(res.value, { stream: true });
+
+      var lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line.startsWith('data: ')) continue;
+        var raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          var chunk = JSON.parse(raw);
+          var delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+          if (delta && delta.content) {
+            fullText += delta.content;
+            contentEl.innerHTML = renderMarkdown(fullText) + '<span class="cursor"></span>';
+            scrollToBottom();
+          }
+          if (chunk.usage) {
+            promptTok     = chunk.usage.prompt_tokens     || 0;
+            completionTok = chunk.usage.completion_tokens || 0;
+          }
+        } catch(e) {}
+      }
+    }
+
+    // Final render without cursor
+    contentEl.innerHTML = renderMarkdown(fullText);
+    conversation.push({ role:'assistant', content: fullText });
+
+    // Token + cost footer
+    if (promptTok || completionTok) {
+      var cost = estimateCost(selectedModel, promptTok, completionTok);
+      footerEl.innerHTML = '<div class="msg-cost-tag">🔡 ' + promptTok + ' in · ' + completionTok + ' out = ' + (promptTok+completionTok) + ' tokens &nbsp;·&nbsp; est. <span class="cost-val">' + fmtCost(cost) + '</span></div>';
+    }
+
+  } catch(e) {
+    contentEl.innerHTML = '<span style="color:var(--red)">Error: ' + esc(e.message) + '</span>';
+  }
+
+  isStreaming = false;
+  setSendLoading(false);
+  scrollToBottom();
+  document.getElementById('msgInput').focus();
+}
+
+function setSendLoading(on) {
+  var btn = document.getElementById('sendBtn');
+  btn.disabled = on;
+  if (on) {
+    btn.classList.add('loading');
+    btn.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>';
+  } else {
+    btn.classList.remove('loading');
+    btn.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>';
+  }
+}
+
+function appendUserMsg(text) {
+  var div = document.createElement('div');
+  div.className = 'msg msg-user';
+  div.innerHTML = '<div class="msg-bubble">' + esc(text).replace(/\n/g,'<br/>') + '</div>';
+  document.getElementById('chatInner').appendChild(div);
+  scrollToBottom();
+}
+
+function appendAssistantMsg(text, model) {
+  var prov = model.split('/')[0];
+  var provClass = { anthropic:'pb-anthropic', openai:'pb-openai', google:'pb-google' }[prov] || 'pb-anthropic';
+  var div = document.createElement('div');
+  div.className = 'msg msg-assistant';
+  div.innerHTML = '<div class="msg-header">'
+    + '<span class="msg-model-badge prov-badge ' + provClass + '">' + prov + '</span>'
+    + '<span class="msg-meta">' + model + '</span>'
+    + '</div>'
+    + '<div class="msg-bubble">' + (text ? renderMarkdown(text) : '<span class="cursor"></span>') + '</div>'
+    + '<div class="msg-footer"></div>';
+  document.getElementById('chatInner').appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function scrollToBottom() {
+  var ca = document.getElementById('chatArea');
+  ca.scrollTop = ca.scrollHeight;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function estimateCost(model, pIn, pOut) {
+  var P = {
+    'anthropic/claude-fable-5':[15,75],'anthropic/claude-sonnet-5':[3,15],
+    'anthropic/claude-opus-4.8':[15,75],'anthropic/claude-opus-4.8-fast':[15,75],
+    'anthropic/claude-opus-4.7':[15,60],'anthropic/claude-haiku-4.5':[0.8,4],
+    'anthropic/claude-3-haiku':[0.25,1.25],
+    'openai/gpt-4o':[2.5,10],'openai/gpt-4.1':[2,8],'openai/gpt-4.1-mini':[0.4,1.6],
+    'openai/gpt-4.1-nano':[0.1,0.4],'openai/gpt-4o-mini':[0.15,0.6],
+    'openai/o4-mini':[1.1,4.4],'openai/gpt-3.5-turbo':[0.5,1.5],
+    'google/gemini-3.1-pro':[1.25,5],'google/gemini-2.5-pro':[1.25,10],
+    'google/gemini-2.5-flash':[0.3,1],'google/gemini-2.5-flash-lite':[0.1,0.4],
+  };
+  var p = P[model] || [3,15];
+  return pIn * p[0]/1e6 + pOut * p[1]/1e6;
+}
+function fmtCost(n) {
+  if (!n || n < 0.0001) return '<$0.0001';
+  if (n < 0.01) return '$'+n.toFixed(4);
+  if (n < 1)    return '$'+n.toFixed(3);
+  return '$'+n.toFixed(2);
+}
+function flashInput(el, msg) {
+  el.style.borderColor = 'var(--red)';
+  el.placeholder = msg;
+  setTimeout(function(){ el.style.borderColor=''; el.placeholder = el.id==='keyInput'?'sk-mesh-your-key':'Message…'; }, 2000);
+}
+
+// Check for key in URL params (e.g. /chat?key=sk-mesh-...)
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var k = params.get('key');
+  if (k) { document.getElementById('keyInput').value = k; verifyKey(); }
+})();
+</script>
+</body>
+</html>
